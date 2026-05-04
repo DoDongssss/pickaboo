@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg text-text-1 font-sans;
+  }
+  * { @apply antialiased; }
+}
+
+@layer components {
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-sans text-sm font-medium
+           px-4 py-2.5 rounded-md border-none cursor-pointer transition-all duration-150
+           leading-none select-none;
+  }
+  .btn-primary {
+    @apply bg-accent text-white shadow-accent;
+    &:hover { @apply bg-accent-hover shadow-accent-hover -translate-y-px; }
+    &:active { @apply translate-y-0; }
+  }
+  .btn-secondary {
+    @apply bg-bg-surface text-text-1 border border-border-strong shadow-sm;
+    &:hover { @apply bg-bg-surface2 border-text-3; }
+  }
+  .btn-ghost {
+    @apply bg-transparent text-text-2;
+    &:hover { @apply bg-bg-surface2 text-text-1; }
+  }
+  .btn-soft {
+    @apply bg-accent-soft text-accent border border-accent-mid;
+    &:hover { @apply bg-accent-mid; }
+  }
+  .btn-sm  { @apply px-3 py-1.5 text-xs rounded-sm; }
+  .btn-lg  { @apply px-6 py-3 text-base rounded-lg; }
+  .btn-icon { @apply w-8 h-8 p-0 rounded-sm; }
+
+  /* ── Badges ── */
+  .badge {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full;
+  }
+  .badge-confirmed { @apply bg-status-successBg text-status-success; }
+  .badge-pending   { @apply bg-status-warningBg text-status-warning; }
+  .badge-cancelled { @apply bg-status-errorBg   text-status-error; }
+  .badge-live      { @apply bg-accent-soft text-accent; }
+  .badge-waiting   { @apply bg-bg-surface2 text-text-2; }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-bg-surface border border-border rounded-lg shadow-sm
+           transition-all duration-200;
+  }
+  .card-hover {
+    @apply hover:shadow-md hover:-translate-y-0.5 hover:border-border-strong cursor-pointer;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full bg-bg-surface border border-border-strong rounded-md
+           px-3 py-2.5 text-sm text-text-1 font-sans outline-none
+           transition-all duration-150 placeholder:text-text-3;
+    &:focus { @apply border-accent ring-2 ring-accent/10; }
+  }
+
+  /* ── Nav link ── */
+  .nav-link {
+    @apply text-sm font-normal px-3 py-1.5 rounded-sm text-text-2
+           cursor-pointer transition-all duration-100 border-none bg-transparent;
+    &:hover { @apply text-text-1 bg-bg-surface2; }
+    &.active { @apply text-accent bg-accent-soft font-medium; }
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    @apply text-[11px] font-semibold tracking-widest uppercase text-text-3 mb-3;
+  }
+
+  /* ── Live dot ── */
+  .live-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot;
+  }
+}
