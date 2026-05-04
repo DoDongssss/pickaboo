@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
-import { MOCK_BOOKINGS, MOCK_STATS } from '../data/mock'
+import { MOCK_STATS } from '../data/mock'
 import { useAuth } from '../hooks/useAuth'
-import { useMatchStore } from '../store'
+import { useMatchStore, useSessionBookingsStore } from '../store'
 import { bookingStatusBadge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 
@@ -15,8 +15,10 @@ const SKILL_COLOR = {
 export function ProfilePage() {
   const navigate = useNavigate()
   const { user, isAdmin, signOut } = useAuth()
-  const { matches } = useMatchStore()
+  const { matches }    = useMatchStore()
+  const { bookings }   = useSessionBookingsStore() // ✅ moved before early return
 
+  // ✅ Early return AFTER all hooks
   if (!user) {
     return (
       <div className="text-center py-20">
@@ -27,7 +29,7 @@ export function ProfilePage() {
   }
 
   const stats      = MOCK_STATS.find(s => s.user_id === user.id)
-  const myBookings = MOCK_BOOKINGS.filter(b => b.user_id === user.id)
+  const myBookings = bookings.filter(b => b.user_id === user.id)
   const myMatches  = matches.filter(m => m.players.some(p => p.user_id === user.id))
   const winRate    = stats ? Math.round((stats.wins / stats.total_matches) * 100) : 0
 
@@ -67,10 +69,10 @@ export function ProfilePage() {
           <p className="section-label">Match Stats</p>
           <div className="grid grid-cols-4 gap-3 mb-8">
             {[
-              { label: 'Total',   value: stats.total_matches          },
-              { label: 'Wins',    value: stats.wins                   },
-              { label: 'Losses',  value: stats.losses                 },
-              { label: 'Win %',   value: `${winRate}%`               },
+              { label: 'Total',  value: stats.total_matches },
+              { label: 'Wins',   value: stats.wins          },
+              { label: 'Losses', value: stats.losses        },
+              { label: 'Win %',  value: `${winRate}%`      },
             ].map(s => (
               <div key={s.label} className="card p-4 text-center">
                 <p className="font-display text-3xl text-accent">{s.value}</p>
@@ -106,9 +108,9 @@ export function ProfilePage() {
                       </span>
                     )}
                     <span className={`badge ${
-                      m.status === 'LIVE'     ? 'badge-live'    :
-                      m.status === 'WAITING'  ? 'badge-pending' :
-                                                'badge-waiting'
+                      m.status === 'LIVE'    ? 'badge-live'    :
+                      m.status === 'WAITING' ? 'badge-pending' :
+                                               'badge-waiting'
                     }`}>
                       <span className="w-1.5 h-1.5 rounded-full bg-current" />
                       {m.status}

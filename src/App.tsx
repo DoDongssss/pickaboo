@@ -30,6 +30,9 @@ import { AdminCourtsPage } from './pages/admin/AdminCourtsPage'
 import { AdminAddonsPage } from './pages/admin/AdminAddonsPage'
 import { AdminPricingPage } from './pages/admin/AdminPricingPage'
 import { AdminAmenitiesPage } from './pages/admin/AdminAmenitiesPage'
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
+
+// import { NotFoundPage } from './pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -40,6 +43,7 @@ export default function App() {
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
         <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+        <Route path="/reset-password"  element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         {/* ── Protected user routes ── */}

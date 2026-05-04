@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Upload } from 'lucide-react'
 import { MOCK_COURTS, MOCK_ADDONS, getOccupiedSlots } from '../data/mock'
-import { useBookingStore } from '../store'
+import { useBookingStore, useSessionBookingsStore } from '../store'
 import { useBookingTotal } from '../hooks/useBookingTotal'
 import { useResolvedPrice } from '../hooks/useResolvedPrice'
+import { useAuth } from '../hooks/useAuth'
 import { BookingCalendar } from '../components/booking/BookingCalendar'
 import { TimeRangePicker } from '../components/booking/TimeRangePicker'
 import { AddOnSelector } from '../components/booking/AddOnSelector'
@@ -18,6 +19,7 @@ export function BookingPage() {
   const navigate    = useNavigate()
   const court       = MOCK_COURTS.find(c => c.id === courtId)
 
+  // Zustand state
   const {
     selectedDate, setSelectedDate,
     startTime,    setStartTime,
@@ -26,12 +28,16 @@ export function BookingPage() {
     reset,
   } = useBookingStore()
 
+  const { addBooking } = useSessionBookingsStore()
+  const { user }       = useAuth()
+
   const [step,       setStep]       = useState(0)
   const [proofFile,  setProofFile]  = useState<File | null>(null)
   const [reference,  setReference]  = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [done,       setDone]       = useState(false)
 
+  // ✅ All hooks before any early return — use optional chaining as fallback
   const { price: effectivePrice, isOverride, overrideLabel } = useResolvedPrice(court?.id ?? '', selectedDate)
   const occupiedSlots = getOccupiedSlots(court?.id ?? '', selectedDate)
 
@@ -42,13 +48,15 @@ export function BookingPage() {
     selectedAddons,
   })
 
-  // ✅ Early return AFTER all hooks
-  if (!court) return (
-    <div className="text-center py-20">
-      <p className="text-text-2">Court not found.</p>
-      <Button variant="ghost" onClick={() => navigate('/')}>← Back</Button>
-    </div>
-  )
+  // ✅ Early return AFTER all hooks — court is narrowed to defined below this point
+  if (!court) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-text-2">Court not found.</p>
+        <Button variant="ghost" onClick={() => navigate('/')}>← Back</Button>
+      </div>
+    )
+  }
 
   function handleAddonQtyChange(addonId: string, qty: number) {
     const addon = MOCK_ADDONS.find(a => a.id === addonId)!
@@ -58,6 +66,36 @@ export function BookingPage() {
   function handleSubmit() {
     setSubmitting(true)
     setTimeout(() => {
+      if (user && court) {
+        addBooking({
+          id:                `b-${Date.now()}`,
+          user_id:           user.id,
+          user,
+          court_id:          court.id,
+          court,
+          booking_date:      selectedDate,
+          start_time:        startTime,
+          end_time:          endTime,
+          duration_hours:    duration,
+          price_per_hour:    effectivePrice,
+          addons_total:      addonsTotal,
+          total_price:       totalPrice,
+          status:            'PENDING_PAYMENT',
+          payment_reference: reference,
+          addons:            selectedAddons.map((sa, i) => ({
+            id:         `ba-${Date.now()}-${i}`,
+            booking_id: `b-${Date.now()}`,
+            addon_id:   sa.addon.id,
+            addon:      sa.addon,
+            quantity:   sa.quantity,
+            unit_price: sa.addon.price,
+            subtotal:   sa.addon.price * sa.quantity,
+            created_at: new Date().toISOString(),
+          })),
+          expires_at:  new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          created_at:  new Date().toISOString(),
+        })
+      }
       setSubmitting(false)
       setDone(true)
       reset()
@@ -149,7 +187,6 @@ export function BookingPage() {
             onEndChange={setEndTime}
           />
 
-          {/* Live base price preview */}
           {duration > 0 && (
             <div className="mt-4 card p-3 flex justify-between items-center">
               <span className="text-sm text-text-2">
@@ -212,7 +249,7 @@ export function BookingPage() {
             Upload your GCash / Maya / bank transfer screenshot.
           </p>
 
-          <label className="border-2 border-dashed border-border-strong rounded-lg p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-accent hover:bg-accent-soft/30 transition-colors mb-4">
+          <label className="border-2 border-dashed border-border-strong rounded-lg p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-accent hover:bg-accent-soft/30 transition-colors mb-4 block">
             <input
               type="file" accept="image/*" className="hidden"
               onChange={e => setProofFile(e.target.files?.[0] ?? null)}
@@ -242,7 +279,6 @@ export function BookingPage() {
             />
           </div>
 
-          {/* Final total */}
           <div className="card p-3 flex justify-between items-center mb-4">
             <span className="text-sm text-text-2">Total to pay</span>
             <span className="font-display text-xl text-accent">

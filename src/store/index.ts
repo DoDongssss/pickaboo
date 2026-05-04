@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { Court, Match, MatchScore, SelectedAddon } from '../types'
-import { MOCK_MATCHES } from '../data/mock'
+import type { Booking, Court, Match, MatchScore, SelectedAddon } from '../types'
+import { MOCK_MATCHES, MOCK_BOOKINGS } from '../data/mock'
 
 // ─────────────────────────────────────────
 // Booking Store
@@ -130,5 +130,29 @@ export const useMatchStore = create<MatchState>((set) => ({
       matches: state.matches.map(m =>
         m.id === matchId ? { ...m, players: [...m.players, player] } : m
       ),
+    })),
+}))
+
+// ─────────────────────────────────────────
+// Session Bookings Store
+// Holds all bookings for the current session — seeded from mock,
+// updated when a new booking is submitted from BookingPage.
+// When Supabase is connected, seed from a real query instead.
+// ─────────────────────────────────────────
+interface SessionBookingsState {
+  bookings:   Booking[]
+  addBooking: (booking: Booking) => void
+  updateStatus: (id: string, status: Booking['status']) => void
+}
+
+export const useSessionBookingsStore = create<SessionBookingsState>((set) => ({
+  bookings: MOCK_BOOKINGS,
+
+  addBooking: (booking) =>
+    set(state => ({ bookings: [booking, ...state.bookings] })),
+
+  updateStatus: (id, status) =>
+    set(state => ({
+      bookings: state.bookings.map(b => b.id === id ? { ...b, status } : b),
     })),
 }))

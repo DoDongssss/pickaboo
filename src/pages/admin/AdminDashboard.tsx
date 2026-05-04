@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { MOCK_BOOKINGS } from '../../data/mock'
 import { useMatchStore } from '../../store'
+import { AdminBookingCalendar } from '../../components/admin/AdminBookingCalendar'
 
 const QUICK_LINKS = [
   { to: '/admin/bookings',  label: 'Booking Management',   icon: CalendarCheck, desc: 'View and manage all bookings'   },
@@ -20,14 +21,13 @@ export function AdminDashboard() {
   const navigate = useNavigate()
   const { matches } = useMatchStore()
 
-  // Reactive — updates when matchStore changes
   const liveCount = matches.filter(m => m.status === 'LIVE').length
 
   const STATS = [
-    { label: 'Total Bookings',   value: MOCK_BOOKINGS.length,                                              color: 'text-text-1',          sub: 'all time'    },
-    { label: 'For Verification', value: MOCK_BOOKINGS.filter(b => b.status === 'FOR_VERIFICATION').length, color: 'text-status-warning',  sub: 'needs review' },
-    { label: 'Confirmed',        value: MOCK_BOOKINGS.filter(b => b.status === 'CONFIRMED').length,        color: 'text-status-success',  sub: 'this week'   },
-    { label: 'Live Matches',     value: liveCount,                                                         color: 'text-accent',          sub: 'right now'   },
+    { label: 'Total Bookings',   value: MOCK_BOOKINGS.length,                                              color: 'text-text-1',         sub: 'all time'    },
+    { label: 'For Verification', value: MOCK_BOOKINGS.filter(b => b.status === 'FOR_VERIFICATION').length, color: 'text-status-warning', sub: 'needs review' },
+    { label: 'Confirmed',        value: MOCK_BOOKINGS.filter(b => b.status === 'CONFIRMED').length,        color: 'text-status-success', sub: 'this week'   },
+    { label: 'Live Matches',     value: liveCount,                                                         color: 'text-accent',         sub: 'right now'   },
   ]
 
   return (
@@ -46,6 +46,20 @@ export function AdminDashboard() {
             <p className="text-xs text-text-3 mt-0.5">{s.sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Booking calendar */}
+      <div className="mb-10">
+        <div className="flex items-center justify-between mb-3">
+          <p className="section-label mb-0">Booking Calendar</p>
+          <button
+            onClick={() => navigate('/admin/bookings')}
+            className="text-xs text-accent hover:underline flex items-center gap-1"
+          >
+            View all bookings <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+        <AdminBookingCalendar bookings={MOCK_BOOKINGS} />
       </div>
 
       {/* Quick links */}
