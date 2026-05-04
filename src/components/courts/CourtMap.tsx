@@ -23,7 +23,10 @@ export function CourtMap({ latitude, longitude, courtName, address }: CourtMapPr
         shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       })
 
-      const map = L.map(mapRef.current!).setView([latitude, longitude], 16)
+      const map = L.map(mapRef.current!, {
+        // Better UX on mobile: disable scroll zoom so page can still scroll
+        scrollWheelZoom: false,
+      }).setView([latitude, longitude], 16)
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
@@ -31,7 +34,11 @@ export function CourtMap({ latitude, longitude, courtName, address }: CourtMapPr
 
       L.marker([latitude, longitude])
         .addTo(map)
-        .bindPopup(`<strong>${courtName}</strong><br/>${address}`)
+        .bindPopup(
+          `<strong style="font-size:13px">${courtName}</strong><br/>
+           <span style="font-size:12px;color:#666">${address}</span>`,
+          { maxWidth: 220 }
+        )
         .openPopup()
 
       mapInstanceRef.current = map
@@ -46,10 +53,24 @@ export function CourtMap({ latitude, longitude, courtName, address }: CourtMapPr
   }, [latitude, longitude, courtName, address])
 
   return (
-    <div
-      ref={mapRef}
-      className="w-full rounded-lg overflow-hidden border border-border"
-      style={{ height: 280 }}
-    />
+    <div className="rounded-xl overflow-hidden border border-border shadow-sm">
+      {/* Map itself — shorter on mobile, taller on desktop */}
+      <div
+        ref={mapRef}
+        className="w-full"
+        style={{ height: 'clamp(200px, 40vw, 280px)' }}
+        aria-label={`Map showing location of ${courtName}`}
+        role="region"
+      />
+      {/* Tap-to-open overlay hint on mobile */}
+      <a
+        href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-1.5 py-2.5 sm:hidden bg-bg-surface border-t border-border text-xs text-text-2 hover:text-text-1 active:bg-bg transition-colors"
+      >
+        Open in Maps ↗
+      </a>
+    </div>
   )
 }

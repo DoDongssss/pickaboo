@@ -15,15 +15,15 @@ export function MainLayout() {
   return (
     <div className="min-h-screen bg-bg">
       {/* Header */}
-      <header className="sticky top-0 z-40 px-4 pt-3 pb-2">
-        <nav className="max-w-4xl mx-auto flex items-center justify-between bg-bg-surface border border-border rounded-xl px-4 py-2.5 shadow-sm">
+      <header className="sticky top-0 z-40 px-3 pt-2.5 pb-2 sm:px-4 sm:pt-3">
+        <nav className="max-w-4xl mx-auto flex items-center justify-between bg-bg-surface border border-border rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-sm">
           {/* Logo */}
-          <span className="font-display text-lg text-accent tracking-tight select-none">
+          <span className="font-display text-base sm:text-lg text-accent tracking-tight select-none flex-shrink-0">
             Pickleball
           </span>
 
           {/* Center links */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0">
             {NAV_LINKS.map(({ to, label, icon: Icon }) => {
               const isActive = to === '/'
                 ? location.pathname === '/'
@@ -31,23 +31,24 @@ export function MainLayout() {
               return (
                 <NavLink
                   key={to} to={to}
-                  className={`nav-link flex items-center gap-1.5 ${isActive ? 'active' : ''}`}
+                  className={`nav-link flex items-center gap-1 sm:gap-1.5 min-h-[44px] px-2 sm:px-3 ${isActive ? 'active' : ''}`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
+                  <Icon className="w-4 h-4 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                  {/* Hide label on very small screens, show on sm+ */}
+                  <span className="hidden xs:inline sm:inline text-xs sm:text-sm">{label}</span>
                 </NavLink>
               )
             })}
           </div>
 
           {/* Right */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Only visible to admins */}
             {isAdmin && (
               <NavLink
                 to="/admin"
                 className={({ isActive }) =>
-                  `nav-link flex items-center gap-1.5 ${isActive ? 'active' : ''}`
+                  `nav-link hidden sm:flex items-center gap-1.5 min-h-[44px] ${isActive ? 'active' : ''}`
                 }
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -58,7 +59,7 @@ export function MainLayout() {
             {/* Avatar — shows first letter of user's name */}
             <NavLink
               to="/profile"
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-accent-soft border-2 border-accent-mid text-accent text-xs font-semibold hover:bg-accent-mid transition-colors select-none"
+              className="flex items-center justify-center w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-accent-soft border-2 border-accent-mid text-accent text-xs font-semibold hover:bg-accent-mid active:scale-95 transition-all select-none"
             >
               {user?.name.charAt(0) ?? '?'}
             </NavLink>
@@ -67,7 +68,7 @@ export function MainLayout() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
         <Outlet/>
       </main>
     </div>
