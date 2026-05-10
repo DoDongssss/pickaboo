@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { CalendarDays, Swords, Radio, ShieldCheck } from 'lucide-react'
-import { useAuth } from '../../hooks/mockup hooks/useAuth'
+import { useAuthStore } from '../../store/authStore'
 
 const NAV_LINKS = [
   { to: '/',        label: 'Book Court', icon: CalendarDays },
@@ -10,7 +10,7 @@ const NAV_LINKS = [
 
 export function MainLayout() {
   const location = useLocation()
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin } = useAuthStore()
 
   return (
     <div className="min-h-screen bg-bg">
