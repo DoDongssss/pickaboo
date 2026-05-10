@@ -69,7 +69,7 @@ export function ProfilePage() {
     return (
       <div className="text-center py-20">
         <p className="text-text-2 mb-4">You are not signed in.</p>
-        <Button onClick={() => navigate('/login')}>Sign In</Button>
+        <Button onClick={() => navigate('/auth/login')}>Sign In</Button>
       </div>
     )
   }
@@ -84,7 +84,7 @@ export function ProfilePage() {
 
   async function handleSignOut() {
     await signOut()
-    navigate('/login')
+    navigate('/auth/login')
   }
 
   return (

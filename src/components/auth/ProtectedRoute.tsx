@@ -14,7 +14,7 @@ export function ProtectedRoute({ children }: Props) {
   const location = useLocation()
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/auth/login" state={{ from: location }} replace />
   }
   return <>{children}</>
 }
@@ -25,7 +25,7 @@ export function AdminRoute({ children }: Props) {
   const location = useLocation()
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/auth/login" state={{ from: location }} replace />
   }
   if (!isAdmin) {
     return <Navigate to="/" replace />

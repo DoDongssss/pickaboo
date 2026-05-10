@@ -30,7 +30,7 @@ export function LandingPage() {
         <span className="font-display text-xl text-accent tracking-tight">Pickleball</span>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/auth/login')}
             className="text-sm text-text-2 hover:text-text-1 px-4 py-2 rounded-lg hover:bg-bg-surface2 transition-all"
           >
             Sign in
