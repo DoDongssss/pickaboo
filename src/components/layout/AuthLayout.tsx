@@ -1,30 +1,16 @@
-import type { ReactNode } from 'react'
+import { Outlet } from 'react-router-dom'
 import logo from '../../assets/logo.png'
+import loginBgGif from '../../assets/gif/loginBgGif.gif'
 
-interface AuthLayoutProps {
-  children: ReactNode
-}
-
-export function AuthLayout({ children }: AuthLayoutProps) {
+export function AuthLayout() {
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center px-4 py-12">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-accent-soft rounded-full opacity-50" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent-mid rounded-full opacity-30" />
+    <div className="relative h-screen min-w-full bg-[#F24E1E]">
+      <div className='absolute inset-0 w-full h-full flex justify-center'>
+        <img src={loginBgGif} alt="" className='h-80'/>
       </div>
-
-      <div className="relative w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <img src={logo} alt="" className='w-24'/>
-          {/* <p className="text-xs text-text-3 mt-1">Court Management Platform</p> */}
-        </div>
-
-        {/* Card */}
-        <div className="relative bg-bg-surface border border-border rounded-xl shadow-lg p-6">
-          {children}
-        </div>
+      <div className='absolute bottom-0 w-full p-6 py-8 bg-white rounded-tl-2xl rounded-tr-2xl'>
+        <img src={logo} alt="" className='w-20 mb-2' />
+        <Outlet />
       </div>
     </div>
   )

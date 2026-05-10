@@ -7,7 +7,7 @@ import { MainLayout }  from './components/layout/MainLayout'
 import { AdminLayout } from './components/layout/AdminLayout'
 
 // Guards
-import { ProtectedRoute, AdminRoute, GuestRoute } from './components/auth/ProtectedRoute'
+import { ProtectedRoute, AdminRoute } from './components/auth/ProtectedRoute'
 
 // Auth pages
 import { LoginPage }          from './pages/auth/LoginPage'
@@ -37,6 +37,7 @@ import { AdminAmenitiesPage } from './pages/admin/AdminAmenitiesPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ToastContainer } from './components/ui/Toast'
 import { LandingPage } from './pages/LandingPage'
+import { AuthLayout } from './components/layout/AuthLayout'
 
 // ── Full-screen loading spinner shown while Supabase
 //    resolves the session on first load / refresh ──────
@@ -77,12 +78,20 @@ export default function App() {
          {/* ── Public landing page ── */}
         <Route path="/home" element={<LandingPage />} />
 
+        <Route path='/auth' element={<AuthLayout />}>
+            <Route path="login"            element={<LoginPage />} />
+            <Route path="register"         element={<RegisterPage />} />
+            <Route path="forgot-password"   element={<ForgotPasswordPage />} />
+            <Route path="reset-password"    element={<ResetPasswordPage />} />
+            <Route path="verify-email"      element={<VerifyEmailPage />} />
+        </Route>
+
         {/* ── Guest only ── */}
-        <Route path="/login"          element={<GuestRoute><LoginPage /></GuestRoute>} />
+        {/* <Route path="/login"          element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register"       element={<GuestRoute><RegisterPage /></GuestRoute>} />
         <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
         <Route path="/reset-password"  element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
-        <Route path="/verify-email"    element={<VerifyEmailPage />} />
+        <Route path="/verify-email"    element={<VerifyEmailPage />} /> */}
 
         {/* ── Authenticated user routes ── */}
         <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>

@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import type { User } from '../../types'
 import { useAuthStore } from '../../store/authStore'
-import { AuthLayout } from '../../components/layout/AuthLayout'
 import { Button } from '../../components/ui/Button'
 
 const SKILL_OPTIONS: { value: User['skill_level']; label: string; desc: string }[] = [
@@ -47,7 +46,7 @@ export function RegisterPage() {
   }
 
   return (
-    <AuthLayout>
+    <>
       <div className="mb-6">
         <h1 className="font-display text-xl text-text-1 mb-1">Create account</h1>
         <p className="text-xs text-text-2">Join the Pickleball platform.</p>
@@ -158,6 +157,6 @@ export function RegisterPage() {
           Sign in
         </Link>
       </p>
-    </AuthLayout>
+    </>
   )
 }
