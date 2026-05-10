@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Loader2, CalendarCheck, Swords, ChevronRight } from 'lucide-react'
+import { LogOut, CalendarCheck, Swords, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useMyBookings } from '../hooks/useMyBookings'
@@ -54,14 +54,15 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (!user) { setStatsLoading(false); return }
-    supabase
-      .from('player_stats')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-      .then(({ data }) => setStats(data as PlayerStats ?? null))
-      .catch(() => setStats(null))
-      .finally(() => setStatsLoading(false))
+    setStats(null)
+    // supabase
+    //   .from('player_stats')
+    //   .select('*')
+    //   .eq('user_id', user.id)
+    //   .single()
+    //   .then(({ data }) => setStats(data as PlayerStats ?? null))
+    //   .catch(() => setStats(null))
+    //   .finally(() => setStatsLoading(false))
   }, [user?.id])
 
   if (!user) {
@@ -322,7 +323,6 @@ const BOOKING_FILTERS: { label: string; value: BookingFilter }[] = [
 
 function BookingsList({
   bookings,
-  userId,
 }: {
   bookings: ReturnType<typeof useMyBookings>['bookings']
   userId:   string

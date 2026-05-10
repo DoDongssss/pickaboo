@@ -5,6 +5,7 @@ import type {
   Team,
   PlayerRole,
 } from '../types/database.types'
+import type { MatchScore } from '../types'
 
 // ── Create a new match ──
 
