@@ -36,6 +36,7 @@ import { AdminAmenitiesPage } from './pages/admin/AdminAmenitiesPage'
 
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ToastContainer } from './components/ui/Toast'
+import { LandingPage } from './pages/LandingPage'
 
 // ── Full-screen loading spinner shown while Supabase
 //    resolves the session on first load / refresh ──────
@@ -73,6 +74,8 @@ export default function App() {
     <BrowserRouter>
       <ToastContainer />
       <Routes>
+         {/* ── Public landing page ── */}
+        <Route path="/home" element={<LandingPage />} />
 
         {/* ── Guest only ── */}
         <Route path="/login"          element={<GuestRoute><LoginPage /></GuestRoute>} />
