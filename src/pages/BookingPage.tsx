@@ -213,7 +213,7 @@ export function BookingPage() {
       toast.error('Missing proof', 'Please upload your payment screenshot.')
       return
     }
-    await flow.submitPaymentProof(proofFile, reference)
+    await flow.submitPaymentProof(proofFile)
     if (flow.error) {
       toast.error('Upload failed', flow.error)
     } else {
