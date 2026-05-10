@@ -7,7 +7,7 @@ import { useMatches } from '../hooks/useMatches'
 import { bookingStatusBadge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Skeleton, EmptyState } from '../components/ui/Skeleton'
-import { supabase } from '../lib/supabase'
+// import { supabase } from '../lib/supabase'
 import type { PlayerStats } from '../types/database.types'
 
 const SKILL_COLOR: Record<string, string> = {

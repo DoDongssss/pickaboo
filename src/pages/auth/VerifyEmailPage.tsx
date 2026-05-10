@@ -6,10 +6,12 @@ import { Button } from '../../components/ui/Button'
 
 export function VerifyEmailPage() {
   const navigate = useNavigate()
-  const { pendingEmail, verifyEmail } = useAuthStore()
+  // const { pendingEmail, verifyEmail } = useAuthStore()
+  const { pendingEmail } = useAuthStore()
+
 
   function handleVerify() {
-    verifyEmail()
+    // verifyEmail()
     navigate('/')
   }
 

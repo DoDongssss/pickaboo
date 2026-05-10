@@ -1,7 +1,7 @@
 import { MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { Court } from '../../types'
 import { Button } from '../ui/Button'
+import type { CourtWithDetails } from '../../types/database.types'
 
 const COURT_COLORS = [
   'from-accent-soft to-accent-mid',
@@ -11,13 +11,13 @@ const COURT_COLORS = [
 const COURT_EMOJI = ['🏓', '🏟', '🌿']
 
 interface CourtCardProps {
-  court: Court
+  court: CourtWithDetails
   index?: number
 }
 
 export function CourtCard({ court, index = 0 }: CourtCardProps) {
   const navigate = useNavigate()
-  const colorClass = COURT_COLORS[index % COURT_COLORS.length]
+const colorClass = COURT_COLORS[index % COURT_COLORS.length]
   const emoji = COURT_EMOJI[index % COURT_EMOJI.length]
 
   return (
