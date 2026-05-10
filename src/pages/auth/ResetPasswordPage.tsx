@@ -49,7 +49,7 @@ export function ResetPasswordPage() {
             <h2 className="font-display text-xl text-text-1 mb-1">Password updated!</h2>
             <p className="text-xs text-text-2">Your password has been changed successfully.</p>
           </div>
-          <Button onClick={() => navigate('/login')} className="w-full">
+          <Button onClick={() => navigate('/auth/login')} className="w-full">
             Back to Sign In
           </Button>
         </div>

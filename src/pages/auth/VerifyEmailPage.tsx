@@ -63,7 +63,7 @@ export function VerifyEmailPage() {
         <p className="text-xs text-text-3">
           Wrong email?{' '}
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/auth/register')}
             className="text-accent hover:underline bg-transparent border-none cursor-pointer"
           >
             Go back and re-register
