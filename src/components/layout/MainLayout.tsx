@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { CalendarDays, Swords, Radio, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import logo from '../../assets/logo.png'
 
 const NAV_LINKS = [
   { to: '/',        label: 'Book Court', icon: CalendarDays },
@@ -18,9 +19,10 @@ export function MainLayout() {
       <header className="sticky top-0 z-40 px-3 pt-2.5 pb-2 sm:px-4 sm:pt-3">
         <nav className="max-w-4xl mx-auto flex items-center justify-between bg-bg-surface border border-border rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-sm">
           {/* Logo */}
-          <span className="font-display text-base sm:text-lg text-accent tracking-tight select-none flex-shrink-0">
+          {/* <span className="font-display text-base sm:text-lg text-accent tracking-tight select-none flex-shrink-0">
             Pickleball
-          </span>
+          </span> */}
+          <img src={logo} alt="" className='w-9'/>
 
           {/* Center links */}
           <div className="flex items-center gap-0">

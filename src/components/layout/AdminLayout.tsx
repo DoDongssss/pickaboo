@@ -4,6 +4,7 @@ import {
   LayoutDashboard, CalendarCheck, CreditCard, Swords,
   Building2, ShoppingBag, Tags, Star, ChevronLeft, Menu, X,
 } from 'lucide-react'
+import logo from '../../assets/logo.png'
 
 interface SidebarLink { to: string; label: string; icon: React.ElementType; end?: boolean }
 interface SidebarGroup { group: string; links: SidebarLink[] }
@@ -91,7 +92,8 @@ export function AdminLayout() {
       {/* ── Desktop sidebar (hidden on mobile) ── */}
       <aside className="hidden sm:flex w-56 flex-shrink-0 bg-bg-surface border-r border-border flex-col">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-          <span className="font-display text-base text-accent">Pickleball</span>
+          {/* <span className="font-display text-base text-accent">Pickleball</span> */}
+          <img src={logo} alt="" className='w-9'/>
           <span className="text-[10px] font-semibold text-text-3 uppercase tracking-wider bg-bg-surface2 px-1.5 py-0.5 rounded">
             Admin
           </span>

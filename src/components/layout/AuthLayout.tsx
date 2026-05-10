@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import logo from '../../assets/logo.png'
 
 interface AuthLayoutProps {
   children: ReactNode
@@ -15,9 +16,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
       <div className="relative w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <span className="font-display text-3xl text-accent tracking-tight">Pickleball</span>
-          <p className="text-xs text-text-3 mt-1">Court Management Platform</p>
+        <div className="flex flex-col items-center mb-8">
+          <img src={logo} alt="" className='w-24'/>
+          {/* <p className="text-xs text-text-3 mt-1">Court Management Platform</p> */}
         </div>
 
         {/* Card */}

@@ -8,8 +8,6 @@ const COURT_COLORS = [
   'from-green-50 to-green-100',
   'from-blue-50 to-blue-100',
 ]
-const COURT_EMOJI = ['🏓', '🏟', '🌿']
-
 interface CourtCardProps {
   court: CourtWithDetails
   index?: number
@@ -18,7 +16,6 @@ interface CourtCardProps {
 export function CourtCard({ court, index = 0 }: CourtCardProps) {
   const navigate = useNavigate()
 const colorClass = COURT_COLORS[index % COURT_COLORS.length]
-  const emoji = COURT_EMOJI[index % COURT_EMOJI.length]
 
   return (
     <div className="card card-hover overflow-hidden flex flex-col">
@@ -31,7 +28,11 @@ const colorClass = COURT_COLORS[index % COURT_COLORS.length]
         onKeyDown={e => e.key === 'Enter' && navigate(`/courts/${court.id}`)}
         aria-label={`View ${court.name} details`}
       >
-        {emoji}
+        <img
+            src={court.court_images[0]?.image_url}
+            alt={`${court.name} image`}
+            className="max-h-56 w-full object-fill"
+          />
       </div>
 
       <div className="p-3 sm:p-4 flex flex-col gap-2 flex-1">
