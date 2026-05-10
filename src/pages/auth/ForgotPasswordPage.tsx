@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
-import { AuthLayout } from '../../components/layout/AuthLayout'
 import { Button } from '../../components/ui/Button'
 
 export function ForgotPasswordPage() {
@@ -24,7 +23,7 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthLayout>
+    <>
       {sent ? (
         // Success state
         <div className="flex flex-col items-center gap-4 text-center py-4">
@@ -99,6 +98,6 @@ export function ForgotPasswordPage() {
           </form>
         </>
       )}
-    </AuthLayout>
+    </>
   )
 }

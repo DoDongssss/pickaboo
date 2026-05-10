@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, CheckCircle2 } from 'lucide-react'
-import { AuthLayout } from '../../components/layout/AuthLayout'
 import { Button } from '../../components/ui/Button'
 
 export function ResetPasswordPage() {
@@ -41,7 +40,7 @@ export function ResetPasswordPage() {
 
   if (done) {
     return (
-      <AuthLayout>
+      <>
         <div className="flex flex-col items-center gap-4 text-center py-4">
           <div className="w-14 h-14 rounded-full bg-status-successBg flex items-center justify-center">
             <CheckCircle2 className="w-7 h-7 text-status-success" />
@@ -54,12 +53,12 @@ export function ResetPasswordPage() {
             Back to Sign In
           </Button>
         </div>
-      </AuthLayout>
+      </>
     )
   }
 
   return (
-    <AuthLayout>
+    <>
       <div className="mb-6">
         <h1 className="font-display text-xl text-text-1 mb-1">Set new password</h1>
         <p className="text-xs text-text-2">Enter a new password for your account.</p>
@@ -135,6 +134,6 @@ export function ResetPasswordPage() {
           Update Password
         </Button>
       </form>
-    </AuthLayout>
+    </>
   )
 }

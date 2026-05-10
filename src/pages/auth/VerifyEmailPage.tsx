@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
-import { AuthLayout } from '../../components/layout/AuthLayout'
 import { Button } from '../../components/ui/Button'
 
 export function VerifyEmailPage() {
@@ -16,7 +15,7 @@ export function VerifyEmailPage() {
   }
 
   return (
-    <AuthLayout>
+    <>
       <div className="flex flex-col items-center gap-4 text-center py-4">
         {/* Icon */}
         <div className="w-16 h-16 rounded-full bg-accent-soft flex items-center justify-center">
@@ -71,6 +70,6 @@ export function VerifyEmailPage() {
           </button>
         </p>
       </div>
-    </AuthLayout>
+    </>
   )
 }
