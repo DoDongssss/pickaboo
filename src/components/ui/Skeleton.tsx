@@ -20,6 +20,38 @@ export function CourtCardSkeleton() {
   )
 }
 
+export function CourtDetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Hero image */}
+      <Skeleton className="w-full aspect-video rounded-lg" />
+
+      {/* Title + badge row */}
+      <div className="flex items-center justify-between gap-4">
+        <Skeleton className="h-6 w-1/2" />
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+
+      {/* Meta row */}
+      <div className="flex gap-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-24" />
+      </div>
+
+      {/* Description block */}
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-3/4" />
+      </div>
+
+      {/* CTA button */}
+      <Skeleton className="h-10 w-36 rounded-md" />
+    </div>
+  )
+}
+
 interface EmptyStateProps {
   icon?: ReactNode
   title: string

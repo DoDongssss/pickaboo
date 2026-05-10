@@ -1,49 +1,99 @@
-import { useMemo } from 'react'
-import { getOccupiedSlots, timeToMinutes, minutesToTime } from '../data/mock'
+import { useEffect, useState } from 'react'
+import { getOccupiedSlots } from '../services/courtService'
 
-interface TimeWindow { start: string; end: string }
+interface TimeSlot {
+  start: string
+  end:   string
+}
 
-/**
- * Returns occupied slots and free windows for a given court + date.
- * When Supabase is connected, replace getOccupiedSlots() with a
- * Supabase query on the bookings table.
- */
-export function useCourtAvailability(courtId: string, date: string, openTime: string, closeTime: string) {
-  const occupiedSlots = useMemo(
-    () => getOccupiedSlots(courtId, date),
-    [courtId, date]
-  )
+interface State {
+  occupiedSlots:    TimeSlot[]
+  availableWindows: TimeSlot[]
+  loading:          boolean
+  error:            string | null
+}
 
-  const freeWindows = useMemo((): TimeWindow[] => {
-    if (!date) return []
+function toMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
+}
 
-    const openMin  = timeToMinutes(openTime)
-    const closeMin = timeToMinutes(closeTime)
+function toTimeString(minutes: number): string {
+  const h = Math.floor(minutes / 60).toString().padStart(2, '0')
+  const m = (minutes % 60).toString().padStart(2, '0')
+  return `${h}:${m}`
+}
 
-    // Sort occupied slots by start time
-    const sorted = [...occupiedSlots].sort(
-      (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
-    )
+function computeAvailableWindows(
+  openTime:  string,
+  closeTime: string,
+  occupied:  TimeSlot[]
+): TimeSlot[] {
+  const open  = toMinutes(openTime)
+  const close = toMinutes(closeTime)
 
-    const windows: TimeWindow[] = []
-    let cursor = openMin
+  const sorted = [...occupied]
+    .map(s => ({ start: toMinutes(s.start), end: toMinutes(s.end) }))
+    .sort((a, b) => a.start - b.start)
 
-    for (const slot of sorted) {
-      const slotStart = timeToMinutes(slot.start)
-      const slotEnd   = timeToMinutes(slot.end)
+  const free: TimeSlot[] = []
+  let cursor = open
 
-      if (cursor < slotStart) {
-        windows.push({ start: minutesToTime(cursor), end: minutesToTime(slotStart) })
-      }
-      cursor = Math.max(cursor, slotEnd)
+  for (const slot of sorted) {
+    if (slot.start > cursor) {
+      free.push({ start: toTimeString(cursor), end: toTimeString(slot.start) })
+    }
+    cursor = Math.max(cursor, slot.end)
+  }
+
+  if (cursor < close) {
+    free.push({ start: toTimeString(cursor), end: toTimeString(close) })
+  }
+
+  return free
+}
+
+export function useCourtAvailability(
+  courtId:   string | null | undefined,
+  date:      string | null | undefined,
+  openTime:  string,
+  closeTime: string
+): State {
+  const [state, setState] = useState<State>({
+    occupiedSlots:    [],
+    availableWindows: [],
+    loading:          false,
+    error:            null,
+  })
+
+  useEffect(() => {
+    if (!courtId || !date) {
+      setState({
+        occupiedSlots:    [],
+        availableWindows: [],
+        loading:          false,
+        error:            null,
+      })
+      return
     }
 
-    if (cursor < closeMin) {
-      windows.push({ start: minutesToTime(cursor), end: minutesToTime(closeMin) })
-    }
+    let cancelled = false
+    setState(prev => ({ ...prev, loading: true, error: null }))
 
-    return windows
-  }, [occupiedSlots, openTime, closeTime, date])
+    getOccupiedSlots(courtId, date)
+      .then((slots) => {
+        if (cancelled) return
+        const occupied  = slots.map(s => ({ start: s.start_time, end: s.end_time }))
+        const available = computeAvailableWindows(openTime, closeTime, occupied)
+        setState({ occupiedSlots: occupied, availableWindows: available, loading: false, error: null })
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setState({ occupiedSlots: [], availableWindows: [], loading: false, error: err.message })
+      })
 
-  return { occupiedSlots, freeWindows }
+    return () => { cancelled = true }
+  }, [courtId, date])
+
+  return state
 }

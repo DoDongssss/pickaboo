@@ -1,139 +1,247 @@
-import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Upload } from 'lucide-react'
-import { MOCK_COURTS, MOCK_ADDONS, getOccupiedSlots } from '../data/mock'
-import { useBookingStore, useSessionBookingsStore } from '../store'
-import { useBookingTotal } from '../hooks/useBookingTotal'
+import { ArrowLeft, CheckCircle2, Upload, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useCourtById } from '../hooks/useCourts'
+import { useCourtAvailability } from '../hooks/useCourtAvailability'
 import { useResolvedPrice } from '../hooks/useResolvedPrice'
-import { useAuth } from '../hooks/useAuth'
+import { useAddons } from '../hooks/useAddons'
+import { useBookingFlow } from '../hooks/useBookingFlow'
 import { BookingCalendar } from '../components/booking/BookingCalendar'
 import { TimeRangePicker } from '../components/booking/TimeRangePicker'
 import { AddOnSelector } from '../components/booking/AddOnSelector'
 import { PriceSummary } from '../components/booking/PriceSummary'
 import { Button } from '../components/ui/Button'
+import { useToast } from '../components/ui/Toast'
+import type { CourtWithDetails } from '../types/database.types'
 
 const STEPS = ['Date', 'Time', 'Add-ons', 'Confirm', 'Payment']
+const STEP_MAP: Record<string, number> = {
+  SELECT_DATE:   0,
+  SELECT_TIME:   1,
+  SELECT_ADDONS: 2,
+  CONFIRM:       3,
+  PAYMENT:       4,
+  DONE:          5,
+}
+
+function computeDuration(start: string | null, end: string | null): number {
+  if (!start || !end) return 0
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  return ((eh * 60 + em) - (sh * 60 + sm)) / 60
+}
+
+// ── Time step ────────────────────────────────────────
+
+function TimeStep({
+  court,
+  flow,
+  occupiedSlots,
+  pricePerHour,
+}: {
+  court:         CourtWithDetails
+  flow:          ReturnType<typeof useBookingFlow>
+  occupiedSlots: { start: string; end: string }[]
+  pricePerHour:  number
+}) {
+  const toast = useToast()
+
+  const [localStart, setLocalStart] = useState(flow.startTime ?? '')
+  const [localEnd,   setLocalEnd]   = useState(flow.endTime   ?? '')
+
+  const duration    = computeDuration(localStart, localEnd)
+  const canContinue = !!localStart && !!localEnd && duration > 0
+
+  async function handleContinue() {
+    if (!canContinue) return
+    await flow.selectTimeRange(localStart, localEnd, pricePerHour)
+    if (flow.error) {
+      toast.error('Slot unavailable', flow.error)
+      setLocalStart('')
+      setLocalEnd('')
+    }
+  }
+
+  return (
+    <div className="animate-slide-up">
+      <p className="section-label">Select time — {flow.selectedDate}</p>
+      <TimeRangePicker
+        openTime={court.open_time}
+        closeTime={court.close_time}
+        occupiedSlots={occupiedSlots}
+        startTime={localStart}
+        endTime={localEnd}
+        onStartChange={(t) => {
+          setLocalStart(t)
+          setLocalEnd('')
+        }}
+        onEndChange={(end) => {
+          setLocalEnd(end)
+        }}
+      />
+
+      {duration > 0 && (
+        <div className="mt-4 card p-3 flex justify-between items-center">
+          <span className="text-sm text-text-2">
+            {duration}h × ₱{pricePerHour}/hr
+          </span>
+          <span className="font-display text-lg text-accent">
+            ₱{(duration * pricePerHour).toLocaleString()}
+          </span>
+        </div>
+      )}
+
+      {flow.loading && (
+        <div className="flex items-center justify-center mt-4 gap-2 text-sm text-text-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Securing your slot…
+        </div>
+      )}
+
+      <Button
+        onClick={handleContinue}
+        loading={flow.loading}
+        disabled={!canContinue}
+        className="w-full mt-4"
+      >
+        {canContinue
+          ? `Continue — ${localStart} to ${localEnd} (${duration}h)`
+          : 'Select a time range above'}
+      </Button>
+    </div>
+  )
+}
+
+// ── Main page ────────────────────────────────────────
 
 export function BookingPage() {
   const { courtId } = useParams<{ courtId: string }>()
   const navigate    = useNavigate()
-  const court       = MOCK_COURTS.find(c => c.id === courtId)
+  const toast       = useToast()
 
-  // Zustand state
-  const {
-    selectedDate, setSelectedDate,
-    startTime,    setStartTime,
-    endTime,      setEndTime,
-    selectedAddons, setAddonQty,
-    reset,
-  } = useBookingStore()
+  // Safety net — if loading takes more than 10s, show an error
+  const [timedOut, setTimedOut] = useState(false)
 
-  const { addBooking } = useSessionBookingsStore()
-  const { user }       = useAuth()
+  const { court, loading: courtLoading, error: courtError } = useCourtById(courtId)
+  const flow = useBookingFlow(courtId ?? '')
 
-  const [step,       setStep]       = useState(0)
+  const { occupiedSlots } = useCourtAvailability(
+    courtId ?? null,
+    flow.selectedDate,
+    court?.open_time  ?? '06:00',
+    court?.close_time ?? '22:00',
+  )
+
+  const { pricePerHour, label: priceLabel } = useResolvedPrice(
+    courtId ?? null,
+    flow.selectedDate,
+  )
+
+  const { addons } = useAddons()
+
   const [proofFile,  setProofFile]  = useState<File | null>(null)
   const [reference,  setReference]  = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [done,       setDone]       = useState(false)
 
-  // ✅ All hooks before any early return — use optional chaining as fallback
-  const { price: effectivePrice, isOverride, overrideLabel } = useResolvedPrice(court?.id ?? '', selectedDate)
-  const occupiedSlots = getOccupiedSlots(court?.id ?? '', selectedDate)
+  // Timeout safety — never show infinite spinner
+  useEffect(() => {
+    if (!courtLoading) return
+    const timer = setTimeout(() => setTimedOut(true), 10_000)
+    return () => clearTimeout(timer)
+  }, [courtLoading])
 
-  const { duration, basePrice, addonsTotal, totalPrice } = useBookingTotal({
-    startTime,
-    endTime,
-    pricePerHour:   effectivePrice,
-    selectedAddons,
-  })
+  // ── Loading ──
+  if (courtLoading && !timedOut) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <p className="text-xs text-text-3">Loading court details…</p>
+      </div>
+    )
+  }
 
-  // ✅ Early return AFTER all hooks — court is narrowed to defined below this point
+  // ── Timeout or error ──
+  if (timedOut || courtError) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-text-2 text-sm mb-2">
+          {courtError ?? 'This is taking longer than expected.'}
+        </p>
+        <p className="text-text-3 text-xs mb-6">
+          Check your connection or try refreshing.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <Button variant="ghost" onClick={() => navigate('/')}>← Back</Button>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Not found ──
   if (!court) {
     return (
       <div className="text-center py-20">
-        <p className="text-text-2">Court not found.</p>
+        <p className="text-text-2 text-sm mb-4">Court not found.</p>
         <Button variant="ghost" onClick={() => navigate('/')}>← Back</Button>
       </div>
     )
   }
 
-  function handleAddonQtyChange(addonId: string, qty: number) {
-    const addon = MOCK_ADDONS.find(a => a.id === addonId)!
-    setAddonQty(addonId, qty, addon)
-  }
-
-  function handleSubmit() {
-    setSubmitting(true)
-    setTimeout(() => {
-      if (user && court) {
-        addBooking({
-          id:                `b-${Date.now()}`,
-          user_id:           user.id,
-          user,
-          court_id:          court.id,
-          court,
-          booking_date:      selectedDate,
-          start_time:        startTime,
-          end_time:          endTime,
-          duration_hours:    duration,
-          price_per_hour:    effectivePrice,
-          addons_total:      addonsTotal,
-          total_price:       totalPrice,
-          status:            'PENDING_PAYMENT',
-          payment_reference: reference,
-          addons:            selectedAddons.map((sa, i) => ({
-            id:         `ba-${Date.now()}-${i}`,
-            booking_id: `b-${Date.now()}`,
-            addon_id:   sa.addon.id,
-            addon:      sa.addon,
-            quantity:   sa.quantity,
-            unit_price: sa.addon.price,
-            subtotal:   sa.addon.price * sa.quantity,
-            created_at: new Date().toISOString(),
-          })),
-          expires_at:  new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-          created_at:  new Date().toISOString(),
-        })
-      }
-      setSubmitting(false)
-      setDone(true)
-      reset()
-    }, 1200)
-  }
-
-  if (done) {
+  // ── Done ──
+  if (flow.step === 'DONE') {
     return (
       <div className="max-w-sm mx-auto text-center py-20 animate-slide-up">
-        <div className="w-16 h-16 rounded-full bg-status-successBg flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 rounded-full bg-status-successBg flex items-center
+          justify-center mx-auto mb-4">
           <CheckCircle2 className="w-9 h-9 text-status-success" />
         </div>
         <h2 className="font-display text-xl text-text-1 mb-2">Booking submitted!</h2>
         <p className="text-sm text-text-2 mb-6">
-          Admin will verify your payment and confirm the booking.
+          Admin will verify your payment and confirm your booking.
         </p>
-        <Button onClick={() => navigate('/')} className="w-full">Back to courts</Button>
+        <Button onClick={() => navigate('/')} className="w-full">
+          Back to courts
+        </Button>
       </div>
     )
+  }
+
+  const stepIndex = STEP_MAP[flow.step] ?? 0
+
+  async function handleSubmitPayment() {
+    if (!proofFile) {
+      toast.error('Missing proof', 'Please upload your payment screenshot.')
+      return
+    }
+    await flow.submitPaymentProof(proofFile, reference)
+    if (flow.error) {
+      toast.error('Upload failed', flow.error)
+    } else {
+      toast.success('Booking submitted!', 'Admin will verify shortly.')
+    }
   }
 
   return (
     <div className="max-w-lg animate-slide-up">
 
-      {/* Header */}
+      {/* Back */}
       <button
-        onClick={() => step > 0 ? setStep(step - 1) : navigate(`/courts/${court.id}`)}
-        className="flex items-center gap-1.5 text-sm text-text-2 hover:text-text-1 mb-5 transition-colors btn btn-ghost"
+        onClick={() =>
+          stepIndex === 0 ? navigate(`/courts/${court.id}`) : flow.goBack()
+        }
+        className="flex items-center gap-1.5 text-sm text-text-2 hover:text-text-1
+          mb-5 transition-colors btn btn-ghost"
       >
         <ArrowLeft className="w-4 h-4" />
-        {step === 0 ? 'Back to court' : 'Previous step'}
+        {stepIndex === 0 ? 'Back to court' : 'Previous step'}
       </button>
 
+      {/* Court header */}
       <h1 className="font-display text-xl text-text-1 mb-1">{court.name}</h1>
       <p className="text-xs text-text-2 mb-6">
-        ₱{effectivePrice}/hr · {court.open_time}–{court.close_time}
-        {isOverride && overrideLabel && (
-          <span className="ml-2 text-status-warning font-medium">· {overrideLabel}</span>
+        ₱{pricePerHour}/hr · {court.open_time}–{court.close_time}
+        {priceLabel && (
+          <span className="ml-2 text-status-warning font-medium">· {priceLabel}</span>
         )}
       </p>
 
@@ -141,115 +249,106 @@ export function BookingPage() {
       <div className="flex items-center gap-1 mb-7">
         {STEPS.map((s, i) => (
           <div key={s} className="flex items-center gap-1 flex-1">
-            <div className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-semibold transition-all flex-shrink-0
-              ${i < step  ? 'bg-status-success text-white'
-              : i === step ? 'bg-accent text-white'
-              :              'bg-border text-text-3'}`}
-            >
-              {i < step ? '✓' : i + 1}
+            <div className={`flex items-center justify-center w-6 h-6 rounded-full
+              text-[10px] font-semibold transition-all flex-shrink-0
+              ${i < stepIndex   ? 'bg-status-success text-white'
+              : i === stepIndex ? 'bg-accent text-white'
+              :                   'bg-border text-text-3'}`}>
+              {i < stepIndex ? '✓' : i + 1}
             </div>
             <span className={`text-[10px] hidden sm:block
-              ${i === step ? 'text-text-1 font-medium' : 'text-text-3'}`}>
+              ${i === stepIndex ? 'text-text-1 font-medium' : 'text-text-3'}`}>
               {s}
             </span>
             {i < STEPS.length - 1 && (
-              <div className={`h-px flex-1 mx-1 ${i < step ? 'bg-status-success' : 'bg-border'}`} />
+              <div className={`h-px flex-1 mx-1
+                ${i < stepIndex ? 'bg-status-success' : 'bg-border'}`}
+              />
             )}
           </div>
         ))}
       </div>
 
-      {/* ── Step 0: Calendar ── */}
-      {step === 0 && (
+      {/* Error banner */}
+      {flow.error && (
+        <div className="bg-status-errorBg border border-status-error/20
+          rounded-lg px-4 py-3 mb-4">
+          <p className="text-sm text-status-error">{flow.error}</p>
+        </div>
+      )}
+
+      {/* ── Step 0: Date ── */}
+      {flow.step === 'SELECT_DATE' && (
         <div className="animate-slide-up">
           <p className="section-label">Select a date</p>
           <BookingCalendar
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
+            selectedDate={flow.selectedDate ?? ''}
+            onSelectDate={flow.selectDate}
           />
-          <Button onClick={() => setStep(1)} className="w-full mt-4" disabled={!selectedDate}>
-            Continue
-          </Button>
         </div>
       )}
 
-      {/* ── Step 1: Time range ── */}
-      {step === 1 && (
-        <div className="animate-slide-up">
-          <p className="section-label">Select time — {selectedDate}</p>
-          <TimeRangePicker
-            openTime={court.open_time}
-            closeTime={court.close_time}
-            occupiedSlots={occupiedSlots}
-            startTime={startTime}
-            endTime={endTime}
-            onStartChange={setStartTime}
-            onEndChange={setEndTime}
-          />
-
-          {duration > 0 && (
-            <div className="mt-4 card p-3 flex justify-between items-center">
-              <span className="text-sm text-text-2">
-                {duration}h × ₱{effectivePrice}/hr
-              </span>
-              <span className="font-display text-lg text-accent">
-                ₱{basePrice.toLocaleString()}
-              </span>
-            </div>
-          )}
-
-          <Button
-            onClick={() => setStep(2)}
-            className="w-full mt-4"
-            disabled={!startTime || !endTime}
-          >
-            Continue
-          </Button>
-        </div>
+      {/* ── Step 1: Time ── */}
+      {flow.step === 'SELECT_TIME' && (
+        <TimeStep
+          court={court}
+          flow={flow}
+          occupiedSlots={occupiedSlots}
+          pricePerHour={pricePerHour}
+        />
       )}
 
       {/* ── Step 2: Add-ons ── */}
-      {step === 2 && (
+      {flow.step === 'SELECT_ADDONS' && (
         <div className="animate-slide-up">
           <p className="section-label">Optional add-ons</p>
           <AddOnSelector
-            addons={MOCK_ADDONS}
-            selectedAddons={selectedAddons}
-            onQtyChange={handleAddonQtyChange}
+            addons={addons}
+            selectedAddons={flow.selectedAddons}
+            onQtyChange={(addonId, qty) => {
+              const addon = addons.find(a => a.id === addonId)
+              if (addon) flow.updateAddon(addon, qty)
+            }}
           />
-          <Button onClick={() => setStep(3)} className="w-full mt-4">
-            Continue {addonsTotal > 0 ? `(+₱${addonsTotal})` : ''}
+          <Button onClick={flow.proceedToConfirm} className="w-full mt-4">
+            Continue {flow.addonsTotal > 0 ? `(+₱${flow.addonsTotal})` : ''}
           </Button>
         </div>
       )}
 
-      {/* ── Step 3: Price summary + confirm ── */}
-      {step === 3 && (
+      {/* ── Step 3: Confirm ── */}
+      {flow.step === 'CONFIRM' && (
         <div className="animate-slide-up">
           <p className="section-label">Confirm booking</p>
           <PriceSummary
             court={court}
-            date={selectedDate}
-            startTime={startTime}
-            endTime={endTime}
-            pricePerHour={effectivePrice}
-            selectedAddons={selectedAddons}
+            date={flow.selectedDate ?? ''}
+            startTime={flow.startTime ?? ''}
+            endTime={flow.endTime ?? ''}
+            pricePerHour={pricePerHour}
+            selectedAddons={flow.selectedAddons}
           />
-          <Button onClick={() => setStep(4)} className="w-full mt-4">
+          <Button
+            onClick={flow.confirmBooking}
+            loading={flow.loading}
+            className="w-full mt-4"
+          >
             Confirm & upload payment
           </Button>
         </div>
       )}
 
-      {/* ── Step 4: Payment upload ── */}
-      {step === 4 && (
+      {/* ── Step 4: Payment ── */}
+      {flow.step === 'PAYMENT' && (
         <div className="animate-slide-up">
           <p className="section-label">Upload payment proof</p>
           <p className="text-xs text-text-2 mb-4">
             Upload your GCash / Maya / bank transfer screenshot.
           </p>
 
-          <label className="border-2 border-dashed border-border-strong rounded-lg p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-accent hover:bg-accent-soft/30 transition-colors mb-4 block">
+          <label className="border-2 border-dashed border-border-strong rounded-lg p-6
+            flex flex-col items-center gap-2 cursor-pointer hover:border-accent
+            hover:bg-accent-soft/30 transition-colors mb-4 block">
             <input
               type="file" accept="image/*" className="hidden"
               onChange={e => setProofFile(e.target.files?.[0] ?? null)}
@@ -282,14 +381,14 @@ export function BookingPage() {
           <div className="card p-3 flex justify-between items-center mb-4">
             <span className="text-sm text-text-2">Total to pay</span>
             <span className="font-display text-xl text-accent">
-              ₱{totalPrice.toLocaleString()}
+              ₱{flow.totalPrice.toLocaleString()}
             </span>
           </div>
 
           <Button
-            onClick={handleSubmit}
-            loading={submitting}
-            disabled={!reference}
+            onClick={handleSubmitPayment}
+            loading={flow.loading}
+            disabled={!proofFile || !reference}
             className="w-full"
           >
             Submit Booking

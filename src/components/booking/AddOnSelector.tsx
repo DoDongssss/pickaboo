@@ -1,10 +1,10 @@
 import { Minus, Plus } from 'lucide-react'
-import type { Addon, SelectedAddon } from '../../types'
+import type { Addon, SelectedAddon } from '../../types/database.types'
 
 interface AddOnSelectorProps {
-  addons: Addon[]
+  addons:         Addon[]
   selectedAddons: SelectedAddon[]
-  onQtyChange: (addonId: string, qty: number) => void
+  onQtyChange:    (addonId: string, qty: number, addon: Addon) => void
 }
 
 export function AddOnSelector({ addons, selectedAddons, onQtyChange }: AddOnSelectorProps) {
@@ -14,7 +14,9 @@ export function AddOnSelector({ addons, selectedAddons, onQtyChange }: AddOnSele
     return selectedAddons.find(sa => sa.addon.id === addonId)?.quantity ?? 0
   }
 
-  const total = selectedAddons.reduce((sum, sa) => sum + sa.addon.price * sa.quantity, 0)
+  const total = selectedAddons.reduce(
+    (sum, sa) => sum + sa.addon.price * sa.quantity, 0
+  )
 
   return (
     <div>
@@ -22,33 +24,42 @@ export function AddOnSelector({ addons, selectedAddons, onQtyChange }: AddOnSele
         {activeAddons.map(addon => {
           const qty = getQty(addon.id)
           return (
-            <div key={addon.id} className="flex items-center justify-between bg-bg-surface border border-border rounded-lg px-4 py-3">
+            <div
+              key={addon.id}
+              className="flex items-center justify-between bg-bg-surface
+                border border-border rounded-lg px-4 py-3"
+            >
               <div className="flex-1">
                 <p className="text-sm font-medium text-text-1">{addon.name}</p>
                 <p className="text-xs text-text-2">{addon.description}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-1 w-16 text-right">₱{addon.price}/unit</span>
-                {/* Stepper */}
+                <span className="text-sm font-medium text-text-1 w-16 text-right">
+                  ₱{addon.price}/unit
+                </span>
                 <div className="flex items-center gap-2 bg-bg-surface2 rounded-lg px-2 py-1">
                   <button
-                    onClick={() => onQtyChange(addon.id, Math.max(0, qty - 1))}
-                    className="w-6 h-6 flex items-center justify-center text-text-2 hover:text-text-1 transition-colors"
+                    onClick={() => onQtyChange(addon.id, Math.max(0, qty - 1), addon)}
                     disabled={qty === 0}
+                    className="w-6 h-6 flex items-center justify-center
+                      text-text-2 hover:text-text-1 transition-colors"
                   >
                     <Minus className="w-3 h-3" />
                   </button>
-                  <span className="text-sm font-semibold text-text-1 w-5 text-center">{qty}</span>
+                  <span className="text-sm font-semibold text-text-1 w-5 text-center">
+                    {qty}
+                  </span>
                   <button
-                    onClick={() => onQtyChange(addon.id, qty + 1)}
-                    className="w-6 h-6 flex items-center justify-center text-text-2 hover:text-accent transition-colors"
+                    onClick={() => onQtyChange(addon.id, qty + 1, addon)}
+                    className="w-6 h-6 flex items-center justify-center
+                      text-text-2 hover:text-accent transition-colors"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
                 </div>
-                {/* Subtotal */}
-                <span className={`text-sm font-medium w-14 text-right ${qty > 0 ? 'text-accent' : 'text-text-3'}`}>
-                  {qty > 0 ? `₱${addon.price * qty}` : '—'}
+                <span className={`text-sm font-medium w-14 text-right
+                  ${qty > 0 ? 'text-accent' : 'text-text-3'}`}>
+                  {qty > 0 ? `₱${(addon.price * qty).toLocaleString()}` : '—'}
                 </span>
               </div>
             </div>
@@ -56,11 +67,13 @@ export function AddOnSelector({ addons, selectedAddons, onQtyChange }: AddOnSele
         })}
       </div>
 
-      {/* Add-ons total */}
       {total > 0 && (
-        <div className="flex justify-between items-center mt-3 px-4 py-2 bg-accent-soft border border-accent-mid rounded-lg">
+        <div className="flex justify-between items-center mt-3 px-4 py-2
+          bg-accent-soft border border-accent-mid rounded-lg">
           <span className="text-xs font-medium text-text-2">Add-ons total</span>
-          <span className="text-sm font-semibold text-accent">₱{total}</span>
+          <span className="text-sm font-semibold text-accent">
+            ₱{total.toLocaleString()}
+          </span>
         </div>
       )}
     </div>

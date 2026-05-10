@@ -21,7 +21,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         </div>
 
         {/* Card */}
-        <div className="bg-bg-surface border border-border rounded-xl shadow-lg p-6">
+        <div className="relative bg-bg-surface border border-border rounded-xl shadow-lg p-6">
           {children}
         </div>
       </div>

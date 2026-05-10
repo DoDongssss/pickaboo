@@ -1,39 +1,45 @@
-import { useMemo } from 'react'
-import { MOCK_PRICING_OVERRIDES, MOCK_COURTS } from '../data/mock'
+import { useEffect, useState } from 'react'
+import { getResolvedPrice } from '../services/courtService'
+
+interface State {
+  pricePerHour: number
+  label:        string | null
+  loading:      boolean
+  error:        string | null
+}
 
 export function useResolvedPrice(
-  courtId?: string,
-  date?: string | null
-) {
-  return useMemo(() => {
-    // ✅ guard early (VERY important)
+  courtId: string | null | undefined,
+  date:    string | null | undefined
+): State {
+  const [state, setState] = useState<State>({
+    pricePerHour: 0,
+    label:        null,
+    loading:      false,
+    error:        null,
+  })
+
+  useEffect(() => {
     if (!courtId || !date) {
-      return {
-        price: 0,
-        isOverride: false,
-        overrideLabel: null as string | null,
-      }
+      setState({ pricePerHour: 0, label: null, loading: false, error: null })
+      return
     }
 
-    const override = MOCK_PRICING_OVERRIDES.find(
-      o => o.court_id === courtId && o.override_date === date
-    )
+    let cancelled = false
+    setState(prev => ({ ...prev, loading: true, error: null }))
 
-    if (override) {
-      return {
-        price: override.price_per_hour,
-        isOverride: true,
-        overrideLabel: override.label,
-      }
-    }
+    getResolvedPrice(courtId, date)
+      .then(({ price_per_hour, label }) => {
+        if (!cancelled)
+          setState({ pricePerHour: price_per_hour, label, loading: false, error: null })
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setState({ pricePerHour: 0, label: null, loading: false, error: err.message })
+      })
 
-    const base =
-      MOCK_COURTS.find(c => c.id === courtId)?.price_per_hour ?? 0
-
-    return {
-      price: base,
-      isOverride: false,
-      overrideLabel: null,
-    }
+    return () => { cancelled = true }
   }, [courtId, date])
+
+  return state
 }

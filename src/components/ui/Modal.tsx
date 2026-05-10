@@ -19,7 +19,7 @@ export function Modal({ open, onClose, title, children, width = 'max-w-md' }: Mo
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="relative inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-text-1/20 backdrop-blur-sm animate-fade-in"

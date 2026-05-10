@@ -3,31 +3,52 @@ import {
   CalendarCheck, CreditCard, Swords, Building2,
   ShoppingBag, Tags, Star, ArrowRight,
 } from 'lucide-react'
-import { MOCK_BOOKINGS } from '../../data/mock'
-import { useMatchStore } from '../../store'
+import { useAdminBookings } from '../../hooks/useAdminBookings'
+import { useMatches } from '../../hooks/useMatches'
 import { AdminBookingCalendar } from '../../components/admin/AdminBookingCalendar'
 
 const QUICK_LINKS = [
-  { to: '/admin/bookings',  label: 'Booking Management',   icon: CalendarCheck, desc: 'View and manage all bookings'   },
-  { to: '/admin/payments',  label: 'Payment Verification', icon: CreditCard,    desc: 'Approve or reject payments'     },
-  { to: '/admin/matches',   label: 'Match Monitoring',     icon: Swords,        desc: 'Track live and finished matches' },
-  { to: '/admin/courts',    label: 'Court Management',     icon: Building2,     desc: 'Edit courts, pricing, location' },
-  { to: '/admin/addons',    label: 'Add-On Management',    icon: ShoppingBag,   desc: 'Manage bookable add-ons'        },
-  { to: '/admin/pricing',   label: 'Pricing Overrides',    icon: Tags,          desc: 'Date-specific price rules'      },
-  { to: '/admin/amenities', label: 'Amenity Management',   icon: Star,          desc: 'Toggle amenities per court'     },
+  { to: '/admin/bookings',  label: 'Booking Management',   icon: CalendarCheck, desc: 'View and manage all bookings'    },
+  { to: '/admin/payments',  label: 'Payment Verification', icon: CreditCard,    desc: 'Approve or reject payments'      },
+  { to: '/admin/matches',   label: 'Match Monitoring',     icon: Swords,        desc: 'Track live and finished matches'  },
+  { to: '/admin/courts',    label: 'Court Management',     icon: Building2,     desc: 'Edit courts, pricing, location'  },
+  { to: '/admin/addons',    label: 'Add-On Management',    icon: ShoppingBag,   desc: 'Manage bookable add-ons'         },
+  { to: '/admin/pricing',   label: 'Pricing Overrides',    icon: Tags,          desc: 'Date-specific price rules'       },
+  { to: '/admin/amenities', label: 'Amenity Management',   icon: Star,          desc: 'Toggle amenities per court'      },
 ]
 
 export function AdminDashboard() {
   const navigate = useNavigate()
-  const { matches } = useMatchStore()
+  const { bookings } = useAdminBookings()
+  const { matches }  = useMatches()
 
   const liveCount = matches.filter(m => m.status === 'LIVE').length
 
   const STATS = [
-    { label: 'Total Bookings',   value: MOCK_BOOKINGS.length,                                              color: 'text-text-1',         sub: 'all time'    },
-    { label: 'For Verification', value: MOCK_BOOKINGS.filter(b => b.status === 'FOR_VERIFICATION').length, color: 'text-status-warning', sub: 'needs review' },
-    { label: 'Confirmed',        value: MOCK_BOOKINGS.filter(b => b.status === 'CONFIRMED').length,        color: 'text-status-success', sub: 'this week'   },
-    { label: 'Live Matches',     value: liveCount,                                                         color: 'text-accent',         sub: 'right now'   },
+    {
+      label: 'Total Bookings',
+      value: bookings.length,
+      color: 'text-text-1',
+      sub:   'all time',
+    },
+    {
+      label: 'For Verification',
+      value: bookings.filter(b => b.status === 'FOR_VERIFICATION').length,
+      color: 'text-status-warning',
+      sub:   'needs review',
+    },
+    {
+      label: 'Confirmed',
+      value: bookings.filter(b => b.status === 'CONFIRMED').length,
+      color: 'text-status-success',
+      sub:   'total',
+    },
+    {
+      label: 'Live Matches',
+      value: liveCount,
+      color: 'text-accent',
+      sub:   'right now',
+    },
   ]
 
   return (
@@ -56,10 +77,10 @@ export function AdminDashboard() {
             onClick={() => navigate('/admin/bookings')}
             className="text-xs text-accent hover:underline flex items-center gap-1"
           >
-            View all bookings <ArrowRight className="w-3 h-3" />
+            View all <ArrowRight className="w-3 h-3" />
           </button>
         </div>
-        <AdminBookingCalendar bookings={MOCK_BOOKINGS} />
+        <AdminBookingCalendar bookings={bookings} />
       </div>
 
       {/* Quick links */}
@@ -71,7 +92,8 @@ export function AdminDashboard() {
             onClick={() => navigate(to)}
             className="card card-hover p-4 flex items-center gap-4 text-left w-full"
           >
-            <div className="w-9 h-9 rounded-lg bg-accent-soft flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-accent-soft flex items-center
+              justify-center flex-shrink-0">
               <Icon className="w-4 h-4 text-accent" />
             </div>
             <div className="flex-1 min-w-0">

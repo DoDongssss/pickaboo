@@ -4,7 +4,11 @@ import { useAuthStore } from '../../store/authStore'
 
 interface Props { children: ReactNode }
 
-/** Redirects to /login if user is not authenticated */
+// isLoading check is no longer needed here because App.tsx
+// blocks rendering all routes until auth resolves.
+// By the time any route renders, user is either set or null.
+
+/** Redirects to /login if not authenticated */
 export function ProtectedRoute({ children }: Props) {
   const { user } = useAuthStore()
   const location = useLocation()
@@ -15,7 +19,7 @@ export function ProtectedRoute({ children }: Props) {
   return <>{children}</>
 }
 
-/** Redirects to / if user is not admin */
+/** Redirects to / if not admin */
 export function AdminRoute({ children }: Props) {
   const { user, isAdmin } = useAuthStore()
   const location = useLocation()
@@ -29,7 +33,7 @@ export function AdminRoute({ children }: Props) {
   return <>{children}</>
 }
 
-/** Redirects already-authenticated users away from login/register */
+/** Redirects authenticated users away from login/register */
 export function GuestRoute({ children }: Props) {
   const { user } = useAuthStore()
 

@@ -1,14 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UserPlus, Check } from 'lucide-react'
-import type { Match, MatchType, Team, PlayerRole } from '../../types'
-import { MOCK_USERS, MOCK_COURTS, CURRENT_USER } from '../../data/mock'
+import type { MatchWithDetails, MatchType, Team, PlayerRole, CourtWithDetails } from '../../types/database.types'
+import { useAuthStore } from '../../store/authStore'
+import { createMatch, addMatchPlayer, getMatchById } from '../../services/matchService'
+import { getCourts } from '../../services/courtService'
+import { supabase } from '../../lib/supabase'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
+import { useToast } from '../ui/Toast'
+import type { User } from '../../types/database.types'
 
 interface CreateMatchModalProps {
-  open:    boolean
-  onClose: () => void
-  onCreated: (match: Match) => void
+  open:      boolean
+  onClose:   () => void
+  onCreated: (match: MatchWithDetails) => void
 }
 
 interface PlayerEntry {
@@ -18,18 +23,57 @@ interface PlayerEntry {
 }
 
 export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalProps) {
-  const [step, setStep]         = useState<1 | 2>(1)
-  const [type, setType]         = useState<MatchType>('FREE')
-  const [courtId, setCourtId]   = useState(MOCK_COURTS[0].id)
-  const [players, setPlayers]   = useState<PlayerEntry[]>([
-    { userId: CURRENT_USER.id, team: 'A', role: 'player' },
-  ])
+  const { user: currentUser } = useAuthStore()
+  const toast = useToast()
+
+  const [step,     setStep]    = useState<1 | 2>(1)
+  const [type,     setType]    = useState<MatchType>('FREE')
+  const [courtId,  setCourtId] = useState('')
+  const [courts,   setCourts]  = useState<CourtWithDetails[]>([])
+  const [users,    setUsers]   = useState<User[]>([])
+  const [players,  setPlayers] = useState<PlayerEntry[]>(
+    currentUser ? [{ userId: currentUser.id, team: 'A', role: 'player' }] : []
+  )
+  const [loading,  setLoading] = useState(false)
+
+  // Load courts + users when modal opens
+  useEffect(() => {
+    if (!open) return
+
+    getCourts().then(data => {
+      setCourts(data)
+      if (data.length > 0) setCourtId(data[0].id)
+    }).catch(() => {})
+
+    supabase
+      .from('users')
+      .select('id, name, email, skill_level, avatar_url, role, created_at')
+      .order('name')
+      .then(({ data }) => {
+        if (data) setUsers(data as User[])
+      })
+  }, [open])
+
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      setStep(1)
+      setType('FREE')
+      setPlayers(currentUser
+        ? [{ userId: currentUser.id, team: 'A', role: 'player' }]
+        : []
+      )
+    }
+  }, [open, currentUser])
 
   function togglePlayer(userId: string) {
     if (players.some(p => p.userId === userId)) {
+      // Can't remove self
+      if (userId === currentUser?.id) return
       setPlayers(prev => prev.filter(p => p.userId !== userId))
     } else {
-      const team: Team = players.filter(p => p.role !== 'scorekeeper').length < 2 ? 'A' : 'B'
+      const team: Team = players.filter(p => p.role !== 'scorekeeper').length < 2
+        ? 'A' : 'B'
       setPlayers(prev => [...prev, { userId, team, role: 'player' }])
     }
   }
@@ -38,29 +82,34 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
     setPlayers(prev => prev.map(p => p.userId === userId ? { ...p, team } : p))
   }
 
-  function create() {
-    const match: Match = {
-      id:         `m-${Date.now()}`,
-      type,
-      court_id:   type === 'COURT' ? courtId : undefined,
-      court:      type === 'COURT' ? MOCK_COURTS.find(c => c.id === courtId) : undefined,
-      status:     'WAITING',
-      created_by: CURRENT_USER.id,
-      players: players.map((p, i) => ({
-        id:       `mp-${Date.now()}-${i}`,
-        match_id: `m-${Date.now()}`,
-        user_id:  p.userId,
-        user:     MOCK_USERS.find(u => u.id === p.userId),
-        team:     p.team,
-        role:     p.role,
-      })),
-      scores:     [],
-      created_at: new Date().toISOString(),
+  async function create() {
+    if (!currentUser) return
+    setLoading(true)
+    try {
+      // 1. Create match row
+      const match = await createMatch({
+        type,
+        courtId:   type === 'COURT' ? courtId : undefined,
+        bookingId: undefined,
+      })
+
+      // 2. Add all selected players
+      await Promise.all(
+        players.map(p =>
+          addMatchPlayer(match.id, p.userId, p.team, p.role)
+        )
+      )
+
+      // 3. Fetch full match with players + scores for parent
+      const full = await getMatchById(match.id)
+      onCreated(full)
+      toast.success('Match created!', `${players.length} player(s) assigned.`)
+      onClose()
+    } catch (err: any) {
+      toast.error('Failed to create match', err.message)
+    } finally {
+      setLoading(false)
     }
-    onCreated(match)
-    onClose()
-    setStep(1)
-    setPlayers([{ userId: CURRENT_USER.id, team: 'A', role: 'player' }])
   }
 
   const canCreate = players.length >= 2
@@ -95,8 +144,12 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
           {type === 'COURT' && (
             <div>
               <p className="text-xs font-medium text-text-2 mb-2">Select Court</p>
-              <select className="input" value={courtId} onChange={e => setCourtId(e.target.value)}>
-                {MOCK_COURTS.map(c => (
+              <select
+                className="input"
+                value={courtId}
+                onChange={e => setCourtId(e.target.value)}
+              >
+                {courts.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
@@ -112,41 +165,44 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
       {/* Step 2 — Player selection */}
       {step === 2 && (
         <div className="flex flex-col gap-4">
-          <p className="text-xs text-text-2">Select players and assign teams. Minimum 2 players required.</p>
+          <p className="text-xs text-text-2">
+            Select players and assign teams. Minimum 2 players required.
+          </p>
 
-          <div className="flex flex-col gap-2">
-            {MOCK_USERS.map(user => {
-              const entry   = players.find(p => p.userId === user.id)
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            {users.map(u => {
+              const entry    = players.find(p => p.userId === u.id)
               const selected = !!entry
+              const isSelf   = u.id === currentUser?.id
 
               return (
                 <div
-                  key={user.id}
+                  key={u.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-all
                     ${selected
                       ? 'border-accent bg-accent-soft/30'
                       : 'border-border hover:border-border-strong cursor-pointer'}`}
-                  onClick={() => !selected && togglePlayer(user.id)}
+                  onClick={() => !selected && togglePlayer(u.id)}
                 >
-                  {/* Avatar */}
-                  <div className="w-8 h-8 rounded-full bg-accent-soft border border-accent-mid flex items-center justify-center text-xs font-semibold text-accent flex-shrink-0">
-                    {user.name.charAt(0)}
+                  <div className="w-8 h-8 rounded-full bg-accent-soft border border-accent-mid
+                    flex items-center justify-center text-xs font-semibold text-accent flex-shrink-0">
+                    {u.name.charAt(0)}
                   </div>
-
-                  {/* Name + skill */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-1 truncate">{user.name}</p>
-                    <p className="text-xs text-text-2 capitalize">{user.skill_level}</p>
+                    <p className="text-sm font-medium text-text-1 truncate">
+                      {u.name} {isSelf && <span className="text-text-3">(you)</span>}
+                    </p>
+                    <p className="text-xs text-text-2 capitalize">{u.skill_level}</p>
                   </div>
 
-                  {/* Team selector (only when selected) */}
                   {selected && (
                     <div className="flex items-center gap-1.5">
                       {(['A', 'B'] as Team[]).map(team => (
                         <button
                           key={team}
-                          onClick={e => { e.stopPropagation(); setPlayerTeam(user.id, team) }}
-                          className={`w-7 h-7 rounded-md text-xs font-bold border transition-all cursor-pointer
+                          onClick={e => { e.stopPropagation(); setPlayerTeam(u.id, team) }}
+                          className={`w-7 h-7 rounded-md text-xs font-bold border
+                            transition-all cursor-pointer
                             ${entry.team === team
                               ? 'bg-accent text-white border-accent'
                               : 'bg-bg-surface border-border text-text-2 hover:border-border-strong'}`}
@@ -154,12 +210,16 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
                           {team}
                         </button>
                       ))}
-                      <button
-                        onClick={e => { e.stopPropagation(); togglePlayer(user.id) }}
-                        className="w-7 h-7 rounded-md text-xs border border-status-error/30 bg-status-errorBg text-status-error hover:bg-red-100 transition-all cursor-pointer flex items-center justify-center"
-                      >
-                        ✕
-                      </button>
+                      {!isSelf && (
+                        <button
+                          onClick={e => { e.stopPropagation(); togglePlayer(u.id) }}
+                          className="w-7 h-7 rounded-md text-xs border border-status-error/30
+                            bg-status-errorBg text-status-error hover:bg-red-100
+                            transition-all cursor-pointer flex items-center justify-center"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -177,8 +237,12 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
               <div key={team}>
                 <p className="font-semibold text-text-1 mb-1">Team {team}</p>
                 {players.filter(p => p.team === team).map(p => {
-                  const u = MOCK_USERS.find(u => u.id === p.userId)
-                  return <p key={p.userId} className="text-text-2">{u?.name.split(' ')[0]}</p>
+                  const u = users.find(u => u.id === p.userId)
+                  return (
+                    <p key={p.userId} className="text-text-2">
+                      {u?.name.split(' ')[0]}
+                    </p>
+                  )
                 })}
                 {players.filter(p => p.team === team).length === 0 && (
                   <p className="text-text-3 italic">Empty</p>
@@ -188,8 +252,15 @@ export function CreateMatchModal({ open, onClose, onCreated }: CreateMatchModalP
           </div>
 
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setStep(1)} className="flex-1">Back</Button>
-            <Button onClick={create} disabled={!canCreate} className="flex-1">
+            <Button variant="secondary" onClick={() => setStep(1)} className="flex-1">
+              Back
+            </Button>
+            <Button
+              onClick={create}
+              loading={loading}
+              disabled={!canCreate}
+              className="flex-1"
+            >
               <Check className="w-3.5 h-3.5" />
               Create Match
             </Button>

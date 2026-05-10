@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, CheckCircle2 } from 'lucide-react'
-// import { useAuthStore } from '../../store/authStore'
 import { AuthLayout } from '../../components/layout/AuthLayout'
 import { Button } from '../../components/ui/Button'
 
 export function ResetPasswordPage() {
   const navigate   = useNavigate()
-//   const { signIn } = useAuthStore()
 
   const [password,  setPassword]  = useState('')
   const [confirmPw, setConfirmPw] = useState('')

@@ -1,145 +1,144 @@
 import { create } from 'zustand'
-import type { User } from '../types'
-import { MOCK_USERS, MOCK_PASSWORD } from '../data/mock'
-
-type UserRole = 'user' | 'admin'
-
-// Must match an email in MOCK_USERS — role comes from user metadata in Supabase
-const ADMIN_EMAILS = ['admin@pickleball.com']
+import { supabase } from '../lib/supabase'
+import type { User, UserRole } from '../types/database.types'
 
 interface AuthState {
-  user:             User | null
-  role:             UserRole
-  isAdmin:          boolean
-  isLoading:        boolean
-  isEmailVerified:  boolean
-  pendingEmail:     string | null   // email waiting for verification
+  user:         User | null
+  role:         UserRole
+  isAdmin:      boolean
+  isLoading:    boolean
+  pendingEmail: string | null
 
-  // Actions
-  setUser:          (user: User | null) => void
-  setRole:          (role: UserRole) => void
-  setLoading:       (v: boolean) => void
-
-  /**
-   * Mock sign-in — simulates Supabase auth.signInWithPassword().
-   * Replace body with real Supabase call when backend is ready.
-   * Returns error string if credentials don't match mock data.
-   */
-  signIn:   (email: string, password: string) => Promise<string | null>
-
-  /**
-   * Mock register — simulates Supabase auth.signUp().
-   * Sets pendingEmail so the app shows the verify screen.
-   */
-  signUp:   (name: string, email: string, password: string, skillLevel: User['skill_level']) => Promise<string | null>
-
-  /**
-   * Mock verify email — simulates clicking the confirm link.
-   * In real flow, Supabase redirects back to the app with a token.
-   */
-  verifyEmail: () => void
-
-  /**
-   * Mock forgot password — simulates Supabase auth.resetPasswordForEmail().
-   * Returns null on success, error string on failure.
-   */
-  forgotPassword: (email: string) => Promise<string | null>
-
-  signOut: () => void
+  init:            () => () => void
+  loadUserProfile: (authUserId: string) => Promise<void>
+  signIn:          (email: string, password: string) => Promise<string | null>
+  signUp:          (name: string, email: string, password: string, skillLevel: User['skill_level']) => Promise<string | null>
+  signOut:         () => Promise<void>
+  forgotPassword:  (email: string) => Promise<string | null>
 }
 
-// Mock password (all users use this in dev)
-
-
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user:            null,   // start unauthenticated so login screen shows
-  role:            'user',
-  isAdmin:         false,
-  isLoading:       false,
-  isEmailVerified: false,
-  pendingEmail:    null,
+  user:         null,
+  role:         'user',
+  isAdmin:      false,
+  isLoading:    true,
+  pendingEmail: null,
 
-  setUser:    (user)  => set({ user }),
-  setRole:    (role)  => set({ role, isAdmin: role === 'admin' }),
-  setLoading: (v)     => set({ isLoading: v }),
+  init: () => {
+    let mounted = true
+
+    // Initial session hydration
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
+
+      if (session?.user) {
+        get().loadUserProfile(session.user.id)
+      } else {
+        set({
+          user: null,
+          role: 'user',
+          isAdmin: false,
+          isLoading: false,
+        })
+      }
+    })
+
+    // Auth listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('[AUTH EVENT]', event)
+
+        // NEVER block this callback with await
+
+        if (session?.user) {
+          get().loadUserProfile(session.user.id)
+        } else {
+          set({
+            user: null,
+            role: 'user',
+            isAdmin: false,
+            isLoading: false,
+          })
+        }
+      }
+    )
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  },
+
+  loadUserProfile: async (authUserId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUserId)
+        .single()
+
+      if (error || !data) {
+        console.error('[authStore] Failed to load profile:', error?.message)
+        set({ user: null, role: 'user', isAdmin: false, isLoading: false })
+        return
+      }
+
+      const role    = data.role as UserRole
+      const isAdmin = role === 'admin'
+      set({ user: data as User, role, isAdmin, isLoading: false })
+    } catch (err) {
+      console.error('[authStore] Unexpected error:', err)
+      set({ user: null, role: 'user', isAdmin: false, isLoading: false })
+    }
+  },
 
   signIn: async (email, password) => {
     set({ isLoading: true })
-    await new Promise(r => setTimeout(r, 800)) // simulate network
 
-    const found = MOCK_USERS.find(u => u.email === email)
-    if (!found || password !== MOCK_PASSWORD) {
+    const { error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+    if (error) {
       set({ isLoading: false })
-      return 'Invalid email or password.'
+      return error.message
     }
 
-    const isAdmin = ADMIN_EMAILS.includes(email)
-    set({
-      user:            found,
-      role:            isAdmin ? 'admin' : 'user',
-      isAdmin,
-      isEmailVerified: true,
-      isLoading:       false,
-    })
     return null
   },
 
-  // signUp: async (_name, email, _password, _skillLevel) => {
-  
-  signUp: async (_name, email) => {
+  signUp: async (name, email, password, skillLevel) => {
     set({ isLoading: true })
-    await new Promise(r => setTimeout(r, 800))
-
-    const exists = MOCK_USERS.find(u => u.email === email)
-    if (exists) {
-      set({ isLoading: false })
-      return 'An account with this email already exists.'
-    }
-
-    // In real flow: Supabase creates the user and sends a verification email
-    set({ isLoading: false, pendingEmail: email })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, skill_level: skillLevel } },
+    })
+    set({ isLoading: false })
+    if (error) return error.message
+    set({ pendingEmail: email })
     return null
   },
 
-  verifyEmail: () => {
-    const email = get().pendingEmail
-    if (!email) return
-
-    // Simulate the user landing back after clicking the email link
-    const newUser: User = {
-      id:          `u-${Date.now()}`,
-      name:        email.split('@')[0],
-      email,
-      skill_level: 'beginner',
-      created_at:  new Date().toISOString(),
-    }
+  signOut: async () => {
+    await supabase.auth.signOut()
+    // Clear state immediately — don't wait for onAuthStateChange
     set({
-      user:            newUser,
-      role:            'user',
-      isAdmin:         false,
-      isEmailVerified: true,
-      pendingEmail:    null,
+      user:      null,
+      role:      'user',
+      isAdmin:   false,
+      isLoading: false,
     })
   },
 
   forgotPassword: async (email) => {
-    set({ isLoading: true })
-    await new Promise(r => setTimeout(r, 800))
-
-    const found = MOCK_USERS.find(u => u.email === email)
-    set({ isLoading: false })
-
-    if (!found) return 'No account found with that email.'
-    // In real flow: Supabase sends a reset link
-    return null
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    return error ? error.message : null
   },
-
-  signOut: () =>
-    set({
-      user:            null,
-      role:            'user',
-      isAdmin:         false,
-      isEmailVerified: false,
-      pendingEmail:    null,
-    }),
 }))

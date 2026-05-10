@@ -48,6 +48,10 @@ export function ForgotPasswordPage() {
               Try again
             </button>
           </p>
+          {/* Demo shortcut — in production Supabase sends the actual link */}
+          <Link to="/reset-password" className="text-xs text-text-3 hover:text-accent transition-colors">
+            Simulate clicking the reset link →
+          </Link>
           <Link to="/login" className="text-xs text-accent hover:underline mt-1">
             Back to sign in
           </Link>

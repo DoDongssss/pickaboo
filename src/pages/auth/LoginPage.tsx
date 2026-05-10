@@ -33,7 +33,7 @@ export function LoginPage() {
       </div>
 
       {/* Demo hint */}
-      <div className="bg-accent-soft border border-accent-mid rounded-lg px-3 py-2.5 mb-5">
+      {/* <div className="bg-accent-soft border border-accent-mid rounded-lg px-3 py-2.5 mb-5">
         <p className="text-xs text-accent font-medium mb-1.5">Demo accounts · password: <span className="font-mono">password123</span></p>
         <div className="flex flex-col gap-1">
           {[
@@ -55,7 +55,7 @@ export function LoginPage() {
           ))}
         </div>
         <p className="text-[10px] text-text-3 mt-1.5">Click an account to fill the email field.</p>
-      </div>
+      </div> */}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Email */}
