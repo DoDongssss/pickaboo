@@ -38,6 +38,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ToastContainer } from './components/ui/Toast'
 import { LandingPage } from './pages/LandingPage'
 import { AuthLayout } from './components/layout/AuthLayout'
+import { LeaderboardPage } from './pages/LeaderboardPage'
 
 // ── Full-screen loading spinner shown while Supabase
 //    resolves the session on first load / refresh ──────
@@ -101,6 +102,7 @@ export default function App() {
           <Route path="matches"         element={<MatchesPage />} />
           <Route path="live"            element={<LivePage />} />
           <Route path="profile"         element={<ProfilePage />} />
+          <Route path="leaderboard"         element={<LeaderboardPage />} />
         </Route>
 
         {/* ── Admin routes ── */}

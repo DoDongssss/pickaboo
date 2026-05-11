@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Swords, Radio, ShieldCheck } from 'lucide-react'
+import { CalendarDays, Swords, Radio, ShieldCheck, Trophy } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 
 const NAV_LINKS = [
   { to: '/',        label: 'Book Court', icon: CalendarDays },
   { to: '/matches', label: 'Matches',    icon: Swords       },
   { to: '/live',    label: 'Live',       icon: Radio        },
+  { to: '/leaderboard', label: 'Ranks',  icon: Trophy       },
 ]
 
 export function MainLayout() {
