@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Upload, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Upload, Loader2, Copy, Check } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useCourtById } from '../hooks/useCourts'
 import { useCourtAvailability } from '../hooks/useCourtAvailability'
@@ -13,6 +13,11 @@ import { PriceSummary } from '../components/booking/PriceSummary'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/ui/Toast'
 import type { CourtWithDetails } from '../types/database.types'
+
+// ── GCash credentials from env ───────────────────────
+const GCASH_NAME   = import.meta.env.VITE_GCASH_NAME   ?? 'Account Name'
+const GCASH_NUMBER = import.meta.env.VITE_GCASH_NUMBER ?? '09XX-XXX-XXXX'
+const GCASH_QR_URL = import.meta.env.VITE_GCASH_QR_URL ?? ''
 
 const STEPS = ['Date', 'Time', 'Add-ons', 'Confirm', 'Payment']
 const STEP_MAP: Record<string, number> = {
@@ -71,13 +76,9 @@ function TimeStep({
         occupiedSlots={occupiedSlots}
         startTime={localStart}
         endTime={localEnd}
-        onStartChange={(t) => {
-          setLocalStart(t)
-          setLocalEnd('')
-        }}
-        onEndChange={(end) => {
-          setLocalEnd(end)
-        }}
+        selectedDate={flow.selectedDate ?? ''}
+        onStartChange={t => { setLocalStart(t); setLocalEnd('') }}
+        onEndChange={end => setLocalEnd(end)}
       />
 
       {duration > 0 && (
@@ -92,7 +93,8 @@ function TimeStep({
       )}
 
       {flow.loading && (
-        <div className="flex items-center justify-center mt-4 gap-2 text-sm text-text-2">
+        <div className="flex items-center justify-center mt-4 gap-2
+          text-sm text-text-2">
           <Loader2 className="w-4 h-4 animate-spin" />
           Securing your slot…
         </div>
@@ -112,6 +114,153 @@ function TimeStep({
   )
 }
 
+// ── GCash panel ──────────────────────────────────────
+
+function GCashPanel({ amount }: { amount: number }) {
+  const toast = useToast()
+  const [copiedNumber, setCopiedNumber] = useState(false)
+  const [copiedAmount, setCopiedAmount] = useState(false)
+
+  function copyText(text: string, which: 'number' | 'amount') {
+    navigator.clipboard.writeText(text).then(() => {
+      if (which === 'number') {
+        setCopiedNumber(true)
+        setTimeout(() => setCopiedNumber(false), 2000)
+      } else {
+        setCopiedAmount(true)
+        setTimeout(() => setCopiedAmount(false), 2000)
+      }
+      toast.success('Copied!', `${text} copied to clipboard.`)
+    })
+  }
+
+  return (
+    <div className="card overflow-hidden mb-5">
+      {/* Header */}
+      <div className="bg-[#007AFF] px-4 py-3 flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-white flex items-center
+          justify-center flex-shrink-0">
+          <span className="text-[#007AFF] font-bold text-xs">G</span>
+        </div>
+        <span className="text-sm font-semibold text-white">GCash Payment</span>
+        <span className="ml-auto text-xs text-white/80">Send exact amount</span>
+      </div>
+
+      <div className="p-4 flex flex-col gap-4">
+
+        {/* QR code */}
+        {GCASH_QR_URL && (
+          <div className="flex justify-center">
+            <div className="bg-white p-3 rounded-xl border border-border
+              shadow-sm inline-flex">
+              <img
+                src={GCASH_QR_URL}
+                alt="GCash QR Code"
+                className="w-40 h-40 object-contain"
+                onError={e => {
+                  (e.target as HTMLImageElement).style.display = 'none'
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Account details */}
+        <div className="flex flex-col gap-2">
+
+          {/* Name */}
+          <div className="flex items-center justify-between bg-bg-surface2
+            rounded-lg px-3 py-2.5">
+            <div>
+              <p className="text-[10px] text-text-3 uppercase tracking-wider
+                font-medium mb-0.5">
+                Account Name
+              </p>
+              <p className="text-sm font-semibold text-text-1">{GCASH_NAME}</p>
+            </div>
+          </div>
+
+          {/* Number with copy */}
+          <div className="flex items-center justify-between bg-bg-surface2
+            rounded-lg px-3 py-2.5">
+            <div>
+              <p className="text-[10px] text-text-3 uppercase tracking-wider
+                font-medium mb-0.5">
+                GCash Number
+              </p>
+              <p className="text-sm font-semibold text-text-1 font-mono">
+                {GCASH_NUMBER}
+              </p>
+            </div>
+            <button
+              onClick={() => copyText(GCASH_NUMBER, 'number')}
+              className="w-8 h-8 rounded-lg bg-bg-surface border border-border
+                flex items-center justify-center text-text-2
+                hover:text-text-1 hover:border-border-strong
+                transition-colors flex-shrink-0 ml-3"
+              title="Copy number"
+            >
+              {copiedNumber
+                ? <Check className="w-3.5 h-3.5 text-status-success" />
+                : <Copy  className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {/* Amount with copy */}
+          <div className="flex items-center justify-between bg-accent-soft
+            border border-accent-mid rounded-lg px-3 py-2.5">
+            <div>
+              <p className="text-[10px] text-accent/70 uppercase tracking-wider
+                font-medium mb-0.5">
+                Amount to Send
+              </p>
+              <p className="font-display text-lg font-bold text-accent">
+                ₱{amount.toLocaleString()}
+              </p>
+            </div>
+            <button
+              onClick={() => copyText(amount.toString(), 'amount')}
+              className="w-8 h-8 rounded-lg bg-white/50 border border-accent-mid
+                flex items-center justify-center text-accent
+                hover:bg-white/80 transition-colors flex-shrink-0 ml-3"
+              title="Copy amount"
+            >
+              {copiedAmount
+                ? <Check className="w-3.5 h-3.5" />
+                : <Copy  className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Instructions */}
+        <div className="bg-bg-surface2 rounded-lg px-3 py-2.5">
+          <p className="text-xs font-semibold text-text-2 mb-1.5">
+            How to pay:
+          </p>
+          <ol className="text-xs text-text-2 flex flex-col gap-1 list-none">
+            {[
+              'Open GCash app → Send Money',
+              `Enter number: ${GCASH_NUMBER}`,
+              `Send exactly ₱${amount.toLocaleString()}`,
+              'Screenshot the confirmation',
+              'Upload the screenshot below',
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-accent/15 text-accent
+                  text-[10px] font-bold flex items-center justify-center
+                  flex-shrink-0 mt-0.5">
+                  {i + 1}
+                </span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ────────────────────────────────────────
 
 export function BookingPage() {
@@ -119,7 +268,6 @@ export function BookingPage() {
   const navigate    = useNavigate()
   const toast       = useToast()
 
-  // Safety net — if loading takes more than 10s, show an error
   const [timedOut, setTimedOut] = useState(false)
 
   const { court, loading: courtLoading, error: courtError } = useCourtById(courtId)
@@ -142,14 +290,12 @@ export function BookingPage() {
   const [proofFile,  setProofFile]  = useState<File | null>(null)
   const [reference,  setReference]  = useState('')
 
-  // Timeout safety — never show infinite spinner
   useEffect(() => {
     if (!courtLoading) return
     const timer = setTimeout(() => setTimedOut(true), 10_000)
     return () => clearTimeout(timer)
   }, [courtLoading])
 
-  // ── Loading ──
   if (courtLoading && !timedOut) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -159,7 +305,6 @@ export function BookingPage() {
     )
   }
 
-  // ── Timeout or error ──
   if (timedOut || courtError) {
     return (
       <div className="text-center py-20">
@@ -177,7 +322,6 @@ export function BookingPage() {
     )
   }
 
-  // ── Not found ──
   if (!court) {
     return (
       <div className="text-center py-20">
@@ -187,7 +331,6 @@ export function BookingPage() {
     )
   }
 
-  // ── Done ──
   if (flow.step === 'DONE') {
     return (
       <div className="max-w-sm mx-auto text-center py-20 animate-slide-up">
@@ -195,7 +338,9 @@ export function BookingPage() {
           justify-center mx-auto mb-4">
           <CheckCircle2 className="w-9 h-9 text-status-success" />
         </div>
-        <h2 className="font-display text-xl text-text-1 mb-2">Booking submitted!</h2>
+        <h2 className="font-display text-xl text-text-1 mb-2">
+          Booking submitted!
+        </h2>
         <p className="text-sm text-text-2 mb-6">
           Admin will verify your payment and confirm your booking.
         </p>
@@ -213,7 +358,12 @@ export function BookingPage() {
       toast.error('Missing proof', 'Please upload your payment screenshot.')
       return
     }
-    await flow.submitPaymentProof(proofFile)
+    if (!reference.trim()) {
+      toast.error('Missing reference', 'Please enter your GCash reference number.')
+      return
+    }
+    // Pass reference so it gets saved to the booking row
+    await flow.submitPaymentProof(proofFile, reference.trim())
     if (flow.error) {
       toast.error('Upload failed', flow.error)
     } else {
@@ -227,10 +377,12 @@ export function BookingPage() {
       {/* Back */}
       <button
         onClick={() =>
-          stepIndex === 0 ? navigate(`/courts/${court.id}`) : flow.goBack()
+          stepIndex === 0
+            ? navigate(`/courts/${court.id}`)
+            : flow.goBack()
         }
-        className="flex items-center gap-1.5 text-sm text-text-2 hover:text-text-1
-          mb-5 transition-colors btn btn-ghost"
+        className="flex items-center gap-1.5 text-sm text-text-2
+          hover:text-text-1 mb-5 transition-colors btn btn-ghost"
       >
         <ArrowLeft className="w-4 h-4" />
         {stepIndex === 0 ? 'Back to court' : 'Previous step'}
@@ -241,7 +393,9 @@ export function BookingPage() {
       <p className="text-xs text-text-2 mb-6">
         ₱{pricePerHour}/hr · {court.open_time}–{court.close_time}
         {priceLabel && (
-          <span className="ml-2 text-status-warning font-medium">· {priceLabel}</span>
+          <span className="ml-2 text-status-warning font-medium">
+            · {priceLabel}
+          </span>
         )}
       </p>
 
@@ -333,7 +487,7 @@ export function BookingPage() {
             loading={flow.loading}
             className="w-full mt-4"
           >
-            Confirm & upload payment
+            Confirm & proceed to payment
           </Button>
         </div>
       )}
@@ -341,54 +495,61 @@ export function BookingPage() {
       {/* ── Step 4: Payment ── */}
       {flow.step === 'PAYMENT' && (
         <div className="animate-slide-up">
-          <p className="section-label">Upload payment proof</p>
-          <p className="text-xs text-text-2 mb-4">
-            Upload your GCash / Maya / bank transfer screenshot.
+          <p className="section-label">Payment</p>
+
+          {/* GCash credentials panel */}
+          <GCashPanel amount={flow.totalPrice} />
+
+          {/* Upload proof */}
+          <p className="text-xs font-semibold text-text-1 mb-2">
+            Upload payment screenshot
           </p>
 
-          <label className="border-2 border-dashed border-border-strong rounded-lg p-6
+          <label className="border-2 border-dashed border-border-strong rounded-lg p-5
             flex flex-col items-center gap-2 cursor-pointer hover:border-accent
             hover:bg-accent-soft/30 transition-colors mb-4 block">
             <input
-              type="file" accept="image/*" className="hidden"
+              type="file"
+              accept="image/*"
+              className="hidden"
               onChange={e => setProofFile(e.target.files?.[0] ?? null)}
             />
             {proofFile ? (
               <>
-                <CheckCircle2 className="w-8 h-8 text-status-success" />
+                <CheckCircle2 className="w-7 h-7 text-status-success" />
                 <p className="text-sm font-medium text-text-1">{proofFile.name}</p>
                 <p className="text-xs text-text-2">Tap to change</p>
               </>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-text-3" />
-                <p className="text-sm text-text-2">Click to upload proof</p>
+                <Upload className="w-7 h-7 text-text-3" />
+                <p className="text-sm text-text-2">Click to upload screenshot</p>
                 <p className="text-xs text-text-3">PNG, JPG up to 5MB</p>
               </>
             )}
           </label>
 
+          {/* Reference number */}
           <div className="flex flex-col gap-1.5 mb-5">
-            <label className="text-xs font-medium text-text-2">Reference Number</label>
+            <label className="text-xs font-semibold text-text-1">
+              GCash Reference Number
+              <span className="text-status-error ml-0.5">*</span>
+            </label>
             <input
-              className="input"
-              placeholder="e.g. GCash #12345"
+              className="input font-mono"
+              placeholder="e.g. 1234567890"
               value={reference}
               onChange={e => setReference(e.target.value)}
             />
-          </div>
-
-          <div className="card p-3 flex justify-between items-center mb-4">
-            <span className="text-sm text-text-2">Total to pay</span>
-            <span className="font-display text-xl text-accent">
-              ₱{flow.totalPrice.toLocaleString()}
-            </span>
+            <p className="text-[10px] text-text-3">
+              Found in your GCash app under transaction history.
+            </p>
           </div>
 
           <Button
             onClick={handleSubmitPayment}
             loading={flow.loading}
-            disabled={!proofFile || !reference}
+            disabled={!proofFile || !reference.trim()}
             className="w-full"
           >
             Submit Booking

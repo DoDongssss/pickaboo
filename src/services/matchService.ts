@@ -2,12 +2,13 @@ import { supabase } from '../lib/supabase'
 import type {
   Match,
   MatchWithDetails,
+  MatchStatus,
   Team,
   PlayerRole,
 } from '../types/database.types'
 import type { MatchScore } from '../types'
 
-// ── Create a new match ──
+// ── Subscribe to live score updates ──
 
 export function subscribeToMatchScores(
   matchId:  string,
@@ -30,6 +31,8 @@ export function subscribeToMatchScores(
   return () => supabase.removeChannel(channel)
 }
 
+// ── Create a new match ──
+
 export async function createMatch(params: {
   type: 'COURT' | 'FREE'
   courtId?: string
@@ -41,8 +44,8 @@ export async function createMatch(params: {
   const { data, error } = await supabase
     .from('matches')
     .insert({
-      type: params.type,
-      court_id: params.courtId ?? null,
+      type:       params.type,
+      court_id:   params.courtId   ?? null,
       booking_id: params.bookingId ?? null,
       created_by: user.id,
     })
@@ -57,9 +60,9 @@ export async function createMatch(params: {
 
 export async function addMatchPlayer(
   matchId: string,
-  userId: string,
-  team: Team,
-  role: PlayerRole = 'player'
+  userId:  string,
+  team:    Team,
+  role:    PlayerRole = 'player'
 ): Promise<void> {
   const { error } = await supabase
     .from('match_players')
@@ -91,11 +94,10 @@ export async function endMatch(matchId: string): Promise<void> {
 }
 
 // ── Upsert score for a set ──
-// Insert if set doesn't exist, update if it does
 
 export async function upsertScore(
-  matchId: string,
-  setNumber: number,
+  matchId:    string,
+  setNumber:  number,
   teamAScore: number,
   teamBScore: number
 ): Promise<void> {
@@ -103,11 +105,11 @@ export async function upsertScore(
     .from('match_scores')
     .upsert(
       {
-        match_id: matchId,
-        set_number: setNumber,
+        match_id:     matchId,
+        set_number:   setNumber,
         team_a_score: teamAScore,
         team_b_score: teamBScore,
-        updated_at: new Date().toISOString(),
+        updated_at:   new Date().toISOString(),
       },
       { onConflict: 'match_id,set_number' }
     )
@@ -115,23 +117,61 @@ export async function upsertScore(
   if (error) throw error
 }
 
-// ── Fetch all matches ──
+// ── Fetch matches (with optional status, date, pagination) ──
 
-export async function getMatches(): Promise<MatchWithDetails[]> {
-  const { data, error } = await supabase
+const MATCH_SELECT = `
+  *,
+  match_players (
+    *,
+    user: users ( id, name, avatar_url, skill_level )
+  ),
+  match_scores ( * )
+`
+
+export interface GetMatchesParams {
+  status?:  MatchStatus | 'ALL'
+  date?:    string   // 'YYYY-MM-DD' — filters by created_at for that full day (UTC)
+  page?:    number   // 1-based, default 1
+  perPage?: number   // default 10
+}
+
+export interface GetMatchesResult {
+  matches: MatchWithDetails[]
+  total:   number
+}
+
+export async function getMatches({
+  status  = 'ALL',
+  date,
+  page    = 1,
+  perPage = 10,
+}: GetMatchesParams = {}): Promise<GetMatchesResult> {
+  const from = (page - 1) * perPage
+  const to   = from + perPage - 1
+
+  let query = supabase
     .from('matches')
-    .select(`
-      *,
-      match_players (
-        *,
-        user: users ( id, name, avatar_url, skill_level )
-      ),
-      match_scores ( * )
-    `)
+    .select(MATCH_SELECT, { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (status !== 'ALL') {
+    query = query.eq('status', status)
+  }
+
+  if (date) {
+    query = query
+      .gte('created_at', `${date}T00:00:00.000Z`)
+      .lte('created_at', `${date}T23:59:59.999Z`)
+  }
+
+  const { data, error, count } = await query
 
   if (error) throw error
-  return data as MatchWithDetails[]
+  return {
+    matches: (data ?? []) as MatchWithDetails[],
+    total:   count ?? 0,
+  }
 }
 
 // ── Fetch only LIVE matches (public scoreboard) ──
@@ -139,14 +179,7 @@ export async function getMatches(): Promise<MatchWithDetails[]> {
 export async function getLiveMatches(): Promise<MatchWithDetails[]> {
   const { data, error } = await supabase
     .from('matches')
-    .select(`
-      *,
-      match_players (
-        *,
-        user: users ( id, name, avatar_url, skill_level )
-      ),
-      match_scores ( * )
-    `)
+    .select(MATCH_SELECT)
     .eq('status', 'LIVE')
     .order('started_at', { ascending: false })
 
@@ -159,14 +192,7 @@ export async function getLiveMatches(): Promise<MatchWithDetails[]> {
 export async function getMatchById(matchId: string): Promise<MatchWithDetails> {
   const { data, error } = await supabase
     .from('matches')
-    .select(`
-      *,
-      match_players (
-        *,
-        user: users ( id, name, avatar_url, skill_level )
-      ),
-      match_scores ( * )
-    `)
+    .select(MATCH_SELECT)
     .eq('id', matchId)
     .single()
 

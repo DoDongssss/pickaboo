@@ -175,13 +175,13 @@ export function useBookingFlow(courtId: string) {
   }, [courtId, state])
 
   // ── Step 5: Upload payment proof ──
-  const submitPaymentProof = useCallback(async (file: File) => {
+  const submitPaymentProof = useCallback(async (file: File, reference: string) => {
     if (!state.booking) return
 
     setState((prev) => ({ ...prev, loading: true, error: null }))
 
     try {
-      await uploadPaymentProof(state.booking.id, file)
+      await uploadPaymentProof(state.booking.id, file, reference)
       setState((prev) => ({ ...prev, step: 'DONE', loading: false }))
     } catch (err: any) {
       setState((prev) => ({

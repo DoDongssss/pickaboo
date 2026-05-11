@@ -1,12 +1,13 @@
 import { type ReactNode, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 interface ModalProps {
-  open: boolean
-  onClose: () => void
-  title: string
+  open:     boolean
+  onClose:  () => void
+  title:    string
   children: ReactNode
-  width?: string
+  width?:   string
 }
 
 export function Modal({ open, onClose, title, children, width = 'max-w-md' }: ModalProps) {
@@ -16,9 +17,19 @@ export function Modal({ open, onClose, title, children, width = 'max-w-md' }: Mo
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
 
+  // Prevent body scroll while modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
@@ -37,6 +48,7 @@ export function Modal({ open, onClose, title, children, width = 'max-w-md' }: Mo
         {/* Body */}
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
